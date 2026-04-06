@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-`twitch-tag-mp3` is a Perl utility that reads Twitch stream recording filenames (downloaded via yt-dlp) and writes ID3v1/v2 tags to the MP3 files. It processes files concurrently via forking.
+`twitch-tag-media` is a Perl utility that reads Twitch stream recording filenames (downloaded via yt-dlp) and writes tags to MP3 (ID3v1/v2 via `id3v2`) and MP4 (metadata via `ffmpeg`) files. It processes files concurrently via forking.
 
 ## Build & Test Commands
 
@@ -22,14 +22,14 @@ dpkg-buildpackage -b
 
 ## Architecture
 
-**Entry point:** `bin/twitch-tag-mp3` — instantiates `Daybo::Twitch::Retag` and calls `->run($dir)`.
+**Entry point:** `bin/twitch-tag-media` — instantiates `Daybo::Twitch::Retag` and calls `->run($dir)`.
 
 **Single module:** `lib/Daybo/Twitch/Retag.pm` (Moose-based) contains all logic:
 
-- `run($dirname)` — recursively walks directories, skips `@eaDir`, forks a child for each MP3 found.
+- `run($dirname)` — recursively walks directories, skips `@eaDir`, forks a child for each supported media file found.
 - `__tag(...)` — forks a child process; parent collects PIDs, child calls `__tagPerProcess` then exits.
-- `__tagPerProcess(...)` — strips existing ID3v1/v2, writes new tags via the `id3v2` command-line utility.
-- `__parseFileName($filename)` — extracts artist, album (`"$artist on Twitch"`), track (filename sans `.mp3`/suffixes), and year from the yt-dlp filename convention: `ArtistHandle (type) YYYY-MM-DD HH_MM-StreamID.mp3`. Contains hardcoded artist handle→display name mappings.
+- `__tagPerProcess(...)` — reads existing tags, writes new ones via the appropriate backend (MP3: `id3v2`; MP4: `ffmpeg`).
+- `__parseFileName($filename)` — extracts artist, album (`"$artist on Twitch"`), track, and year from the yt-dlp filename convention: `ArtistHandle (type) YYYY-MM-DD HH_MM-StreamID.mp3`. Contains hardcoded artist handle→display name mappings.
 - `__acceptableDirName($name)` — returns false for `@eaDir` (Synology index dirs).
 
 ## Coding Style
@@ -41,7 +41,7 @@ sub foo {   # correct
 sub foo{    # wrong
 ```
 
-Subroutines prefixed with `__` are private (internal to the module). Subroutines without that prefix (`run`, `usage`) are public and form the API called from `bin/twitch-tag-mp3`.
+Subroutines prefixed with `__` are private (internal to the module). Subroutines without that prefix (`run`, `usage`) are public and form the API called from `bin/twitch-tag-media`.
 
 All subroutines must be in lexical (case-insensitive alphabetical) order, ignoring the `__` prefix when determining position. This applies to new subs and any time existing subs are renamed.
 

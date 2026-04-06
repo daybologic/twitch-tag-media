@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# Twitch MP3 tagger.
+# Twitch media tagger.
 # Copyright (c) 2023-2026, Rev. Duncan Ross Palmer (2E0EOL)
 # All rights reserved.
 #
@@ -33,10 +33,10 @@
 
 Usage:
 
-	twitch-tag-mp3 --directory <DIR> [--force] [--help] [--jobs <N>] [--json] [--noop] [--recursive] [--verbose] [--version]
-	twitch-tag-mp3 -d <DIR> [-f] [-h] [-j <N>] [-J] [-n] [-r] [-v] [-V]
+	twitch-tag-media --directory <DIR> [--force] [--help] [--jobs <N>] [--json] [--noop] [--recursive] [--verbose] [--version]
+	twitch-tag-media -d <DIR> [-f] [-h] [-j <N>] [-J] [-n] [-r] [-v] [-V]
 
-Add MP3 ID3 tags to a file downloaded from Twitch using yt-dlp
+Add tags to media files downloaded from Twitch using yt-dlp
 
 =cut
 
