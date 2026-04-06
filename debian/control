@@ -1,4 +1,4 @@
-Source: twitch-tag-mp3
+Source: twitch-tag-media
 Section: sound
 Priority: optional
 Maintainer: Rev. Duncan Ross Palmer <2e0eol@gmail.com>
@@ -12,17 +12,16 @@ Build-Depends-Indep: libsys-cpu-perl,
  sox
 Standards-Version: 4.7.2
 Rules-Requires-Root: no
-Homepage: https://git.sr.ht/~m6kvm/twitch-tag-mp3
+Homepage: https://git.sr.ht/~m6kvm/twitch-tag-media
 
-Package: twitch-tag-mp3
+Package: twitch-tag-media
 Architecture: all
 Depends: ${shlibs:Depends}, ${misc:Depends},
  id3v2,
  libipc-run3-perl,
  libmoose-perl,
  libsys-cpu-perl
-Description: Perl program for ID3 tagging Twitch MP3 files
- If you have used yt-dlp to download MP4 files from Twitch
- and then converted them to MP3, this program can set suitable
- ID3 tags on the files, recursively, so that programs like Plex
- know who the artists are.
+Description: Perl program for tagging Twitch media files
+ If you have used yt-dlp to download MP3 or MP4 files from Twitch,
+ this program can set suitable tags on those files, recursively,
+ so that programs like Plex know who the artists are.

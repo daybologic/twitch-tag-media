@@ -1,6 +1,6 @@
 .gitignore
 .pre-commit-config.yaml
-bin/twitch-tag-mp3
+bin/twitch-tag-media
 CLAUDE.md
 debian/changelog
 debian/control

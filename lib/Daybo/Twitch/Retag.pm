@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# Twitch MP3 tagger.
+# Twitch media tagger.
 # Copyright (c) 2023-2026, Rev. Duncan Ross Palmer (2E0EOL)
 # All rights reserved.
 #
@@ -39,9 +39,9 @@ use Moose;
 use POSIX qw(EXIT_FAILURE EXIT_SUCCESS);
 use Daybo::Twitch::TagWrap;
 
-our $VERSION = '0.7.0';
+our $VERSION = '0.8.0';
 
-our $URL = 'github.com/daybologic/twitch-tag-mp3';
+our $URL = 'github.com/daybologic/twitch-tag-media';
 
 has jobs => (is => 'ro', isa => 'Int',  default => 1);
 
@@ -543,9 +543,9 @@ sub __tagPerProcess {
 }
 
 sub usage {
-	printf("twitch-tag-mp3 %s usage:\n", $VERSION);
-	print("twitch-tag-mp3 --directory <DIR> [--force] [--help] [--jobs <N>] [--json] [--noop] [--recursive] [--verbose] [--version]\n");
-	print("twitch-tag-mp3 -d <DIR> [-f] [-h] [-j <N>] [-J] [-n] [-r] [-v] [-V]\n\n");
+	printf("twitch-tag-media %s usage:\n", $VERSION);
+	print("twitch-tag-media --directory <DIR> [--force] [--help] [--jobs <N>] [--json] [--noop] [--recursive] [--verbose] [--version]\n");
+	print("twitch-tag-media -d <DIR> [-f] [-h] [-j <N>] [-J] [-n] [-r] [-v] [-V]\n\n");
 	printf("See https://%s for more information.\n", $URL);
 	return 1;
 }
