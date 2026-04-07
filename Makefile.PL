@@ -40,7 +40,7 @@ eval {
 use ExtUtils::MakeMaker;
 
 WriteMakefile(
-	ABSTRACT     => 'Perl program for ID3 tagging Twitch MP3 files which were downloaded with yt-dlp',
+	ABSTRACT     => 'Perl program for tagging Twitch media files downloaded with yt-dlp',
 	AUTHOR       => 'Rev. Duncan Ross Palmer, 2E0EOL (2e0eol@gmail.com)',
 
 	EXE_FILES    => [glob q('bin/*')],

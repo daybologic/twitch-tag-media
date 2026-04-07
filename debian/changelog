@@ -1,3 +1,9 @@
+twitch-tag-media (0.8.0) stable; urgency=low
+
+  * Rename project and binary from twitch-tag-mp3 to twitch-tag-media.
+
+ -- Rev. Duncan Ross Palmer <2e0eol@gmail.com>  Mon, 06 Apr 2026 00:00:00 +0100
+
 twitch-tag-mp3 (0.7.0) stable; urgency=low
 
   * Add MP4 tagging support via ffprobe and ffmpeg.
