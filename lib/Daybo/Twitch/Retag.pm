@@ -34,6 +34,7 @@ use English qw(-no_match_vars);
 use IO::Dir;
 use IO::File;
 use JSON::PP qw(encode_json);
+use List::Util qw(shuffle);
 use Time::HiRes qw(time);
 use Moose;
 use POSIX qw(EXIT_FAILURE EXIT_SUCCESS);
@@ -45,7 +46,7 @@ our $URL = 'github.com/daybologic/twitch-tag-media';
 
 has jobs => (is => 'ro', isa => 'Int',  default => 1);
 
-has [qw(force json noop recursive verbose)]
+has [qw(force json noop random recursive verbose)]
     => (is => 'ro', isa => 'Bool', default => 0);
 
 has _stats => (is => 'rw', isa => 'HashRef', default => sub { return {}; });
@@ -99,6 +100,7 @@ sub __collect {
 	}
 
 	$dir->close();
+	@files = shuffle(@files) if ($self->random);
 	return \@files;
 }
 
@@ -544,8 +546,8 @@ sub __tagPerProcess {
 
 sub usage {
 	printf("twitch-tag-media %s usage:\n", $VERSION);
-	print("twitch-tag-media --directory <DIR> [--force] [--help] [--jobs <N>] [--json] [--noop] [--recursive] [--verbose] [--version]\n");
-	print("twitch-tag-media -d <DIR> [-f] [-h] [-j <N>] [-J] [-n] [-r] [-v] [-V]\n\n");
+	print("twitch-tag-media --directory <DIR> [--force] [--help] [--jobs <N>] [--json] [--noop] [--random] [--recursive] [--verbose] [--version]\n");
+	print("twitch-tag-media -d <DIR> [-f] [-h] [-j <N>] [-J] [-n] [-R] [-r] [-v] [-V]\n\n");
 	printf("See https://%s for more information.\n", $URL);
 	return 1;
 }
