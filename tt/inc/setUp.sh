@@ -32,7 +32,7 @@
 
 set -euo pipefail
 
-EXE="../bin/twitch-tag-mp3"
+EXE="../bin/twitch-tag-media"
 LIBDIR="../lib"
 
 tmpDir=$(mktemp -d)
