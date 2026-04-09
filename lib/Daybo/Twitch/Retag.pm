@@ -250,7 +250,7 @@ sub __logTagChanges {
 			changes => [ ],
 		);
 	} else {
-		$plain_changeLog = sprintf('[%s %d%%]: ', $self->__stamp(), $pct);
+		$plain_changeLog = sprintf('[%s %d%%] ', $self->__stamp(), $pct);
 	}
 
 	foreach my $f (
