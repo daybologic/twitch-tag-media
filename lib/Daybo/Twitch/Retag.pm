@@ -170,6 +170,23 @@ sub __fmtBytes {
 	return sprintf('%d bytes', $bytes);
 }
 
+=item C<__fmtDuration($seconds)>
+
+Formats a duration in seconds as a human-readable string.  Emits
+C<Hh MMm S.Ss>, C<Mm S.Ss>, or C<S.Ss> depending on magnitude.
+
+=cut
+
+sub __fmtDuration {
+	my ($seconds) = @_;
+	my $h = int($seconds / 3600);
+	my $m = int(($seconds - $h * 3600) / 60);
+	my $s = $seconds - $h * 3600 - $m * 60;
+	return sprintf('%dh%02dm%.1fs', $h, $m, $s) if ($h > 0);
+	return sprintf('%dm%.1fs', $m, $s) if ($m > 0);
+	return sprintf('%.1fs', $s);
+}
+
 =item C<__getExt($fn)>
 
 Returns the lower-case file extension of C<$fn> (the part after the last
@@ -555,7 +572,29 @@ sub run {
 		} else {
 			$pct = $total > 0 ? int(($i + 1) / $total * 100) : 100;
 		}
-		$self->__log("Tagging $relPath");
+		my $now = time();
+		my $elapsed = $now - $self->_stats->{start_time};
+		my $eta;
+		$eta = ($total - $i) * $elapsed / $i if ($i > 0 && $elapsed > 0);
+
+		if ($self->json) {
+			my %progress = (
+				process   => { type => 'progress', pct => $pct },
+				file      => $relPath,
+				elapsed_s => $elapsed + 0,
+			);
+			$progress{eta_s} = $eta + 0 if (defined($eta));
+			$self->__log(\%progress);
+		} else {
+			my $timing;
+			if (defined($eta)) {
+				$timing = sprintf(', elapsed: %s, ETA: %s', __fmtDuration($elapsed), __fmtDuration($eta));
+			} else {
+				$timing = sprintf(', elapsed: %s', __fmtDuration($elapsed));
+			}
+			$self->__log(sprintf('[%d%%] Tagging %s%s', $pct, $relPath, $timing));
+		}
+
 		$self->__tag(
 			$relPath,
 			$pct,
