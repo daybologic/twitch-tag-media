@@ -298,7 +298,7 @@ used at the start of every plain-text log marker.
 
 sub __marker {
 	my ($self, $pct) = @_;
-	return sprintf('[%s %d%%] ', $self->__stamp(), $pct);
+	return sprintf('[%s %3d%%] ', $self->__stamp(), $pct);
 }
 
 =item C<__normalizeArtist($artistRaw)>
@@ -637,11 +637,11 @@ C<HH:MM:SS> for use as the timestamp token in log markers.
 
 sub __stamp {
 	my ($self) = @_;
-	my $elapsed = int(time() - $self->_stats->{start_time});
+	my $elapsed = time() - $self->_stats->{start_time};
 	my $h = int($elapsed / 3600);
 	my $m = int(($elapsed - $h * 3600) / 60);
 	my $s = $elapsed - $h * 3600 - $m * 60;
-	return sprintf('%02d:%02d:%02d', $h, $m, $s);
+	return sprintf('%02d:%02d:%06.3f', $h, $m, $s);
 }
 
 =item C<__tag($file, $pct, $size, $ext, $artist, $album, $track, $year)>
