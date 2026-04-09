@@ -250,7 +250,7 @@ sub __logTagChanges {
 			changes => [ ],
 		);
 	} else {
-		$plain_changeLog = sprintf('[%s %d%%]: ', $self->__stamp, $pct);
+		$plain_changeLog = sprintf('[%s %d%%]: ', $self->__stamp(), $pct);
 	}
 
 	foreach my $f (
@@ -281,7 +281,7 @@ sub __logTagChanges {
 		    if ($changeCount == 0);
 		$self->__log(\%JSON_changeLog);
 	} else {
-		$plain_changeLog = sprintf('[%s %d%%] Tags unchanged, forcing rewrite for %s', $self->__stamp, $pct, $file)
+		$plain_changeLog = sprintf('[%s %d%%] Tags unchanged, forcing rewrite for %s', $self->__stamp(), $pct, $file)
 		    if ($changeCount == 0);
 		$self->__log($plain_changeLog);
 	}
@@ -592,7 +592,7 @@ sub run {
 			} else {
 				$timing = sprintf(', elapsed: %s', __fmtDuration($elapsed));
 			}
-			$self->__log(sprintf('[%s %d%%] Tagging %s%s', $self->__stamp, $pct, $relPath, $timing));
+			$self->__log(sprintf('[%s %d%%] Tagging %s%s', $self->__stamp(), $pct, $relPath, $timing));
 		}
 
 		$self->__tag(
@@ -701,7 +701,7 @@ sub __tagPerProcess {
 		});
 	} else {
 		$self->__log(sprintf('[%s %d%%] artist: %s, album: %s, track: %s, year: %s',
-		    $self->__stamp, $pct, $artist, $album, $track, $year));
+		    $self->__stamp(), $pct, $artist, $album, $track, $year));
 	}
 
 	local $PROGRAM_NAME = sprintf('%s: reading "%s"', $self->__originalProgramName, $file);
@@ -716,7 +716,7 @@ sub __tagPerProcess {
 	    && ($existing->{year}    // '') eq $year
 	    && ($existing->{comment} // '') eq $comment
 	) {
-		$self->__log(sprintf('[%s %d%%] Tags unchanged, skipping %s', $self->__stamp, $pct, $file));
+		$self->__log(sprintf('[%s %d%%] Tags unchanged, skipping %s', $self->__stamp(), $pct, $file));
 		return (0, 0);
 	}
 
