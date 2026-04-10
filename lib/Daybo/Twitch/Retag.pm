@@ -86,6 +86,19 @@ sub __acceptableDirName {
 	return ($dirName ne '@eaDir');
 }
 
+=item C<__acceptableFileName($filename)>
+
+Returns false if C<$filename> has a C<.temp.> penultimate extension
+(e.g. C<foo.temp.mp4>), which indicates a file still being downloaded
+by yt-dlp.  Returns true otherwise.
+
+=cut
+
+sub __acceptableFileName {
+	my ($filename) = @_;
+	return ($filename !~ /\.temp\.[^.]+$/i);
+}
+
 =item C<__collect($dirname)>
 
 Recursively walks C<$dirname>, returning an array ref of tuples
@@ -123,7 +136,7 @@ sub __collect {
 			$self->_stats->{seen_files}++;
 			$self->_stats->{seen_bytes} += $size;
 
-			if ($self->_tagWrap->isExtSupported($ext)) {
+			if ($self->_tagWrap->isExtSupported($ext) && __acceptableFileName($filename)) {
 				if (__parseFileName($filename)) {
 					push(@files, [ $relPath, $filename, $size, $ext ]);
 				} else {
