@@ -44,6 +44,7 @@ sub foo{    # wrong
 Subroutines prefixed with `__` are private (internal to the module). Subroutines without that prefix (`run`, `usage`) are public and form the API called from `bin/twitch-tag-media`.
 
 All subroutines must be in lexical (case-insensitive alphabetical) order, ignoring the `__` prefix when determining position. This applies to new subs and any time existing subs are renamed.
+Calls to subroutines must always include parentheses, so they are visually distinct from access to Moose attributes.
 
 ## Code Quality Rules
 

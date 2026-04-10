@@ -50,7 +50,7 @@ Add MP3 ID3 tags to a file downloaded from Twitch using yt-dlp
 | `--json` | `-J` | Emit newline-delimited JSON events instead of human-readable text (see below) |
 | `--noop` | `-n` | Preview the tags which would be written without modifying any files |
 | `--recursive` | `-r` | Descend into subdirectories |
-| `--verbose` | `-v` | See verbose progress, tag information, and a run summary |
+| `--verbose` | `-v` | See verbose progress (with elapsed time and ETA), tag information, and a run summary |
 | `--version` | `-V` | Print the version number and exit |
 
 ## JSON output mode
@@ -62,6 +62,23 @@ wrapper that needs structured data rather than human-readable text.
 With `--json` and `--verbose` active together, twitch-tag-media writes one JSON object per line
 to stdout (newline-delimited JSON / JSON Lines format).  Each object has a `process` envelope
 and a type-specific payload.
+
+### Event: `progress`
+
+Emitted by the parent process once per file, just before the child is forked.  Reports the
+current percentage, elapsed wall-clock time, and (from the second file onwards) an estimated
+time to completion based on the file-dispatch rate.
+
+```json
+{
+  "process":   { "type": "progress", "pct": 42 },
+  "file":      "/media/streams/artist (live) 2024-06-01 20_30-123456789.mp3",
+  "elapsed_s": 5.2,
+  "eta_s":     7.1
+}
+```
+
+`eta_s` is absent on the first file because no rate data is available yet.
 
 ### Event: `tag`
 
