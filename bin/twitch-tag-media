@@ -63,7 +63,7 @@ sub main {
 	my $ctime = 0;
 	my $force = 0;
 	my $help = 0;
-	my $jobs = 1;
+	my $jobs;
 	my $json = 0;
 	my $mtime = 0;
 	my $noop = 0;
@@ -87,16 +87,15 @@ sub main {
 		'version|V' => \$version,
 	));
 
-	if ($jobs < 1) {
-		print STDERR "Error: --jobs must be at least 1\n";
-		return EXIT_FAILURE;
+	if ($version) {
+		print "$Daybo::Twitch::Retag::VERSION\n";
+		return EXIT_SUCCESS;
 	}
 
-	my $retagger = Daybo::Twitch::Retag->new(
+	my %params = (
 		atime => $atime,
 		ctime => $ctime,
 		force => $force,
-		jobs => $jobs,
 		json => $json,
 		mtime => $mtime,
 		noop => $noop,
@@ -105,10 +104,16 @@ sub main {
 		verbose => $verbose,
 	);
 
-	if ($version) {
-		print "$Daybo::Twitch::Retag::VERSION\n";
-		return EXIT_SUCCESS;
+	if (defined($jobs)) {
+		if ($jobs < 1) {
+			print STDERR "Error: --jobs must be at least 1\n";
+			return EXIT_FAILURE;
+		} elsif ($jobs > 0) {
+			$params{jobs} = $jobs;
+		}
 	}
+
+	my $retagger = Daybo::Twitch::Retag->new(\%params);
 
 	if ($help) {
 		$retagger->usage();

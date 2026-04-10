@@ -35,6 +35,7 @@ use IO::Dir;
 use IO::File;
 use JSON::PP qw(encode_json);
 use List::Util qw(shuffle);
+use Sys::CPU qw();
 use Time::HiRes qw(time);
 use Moose;
 use POSIX qw(EXIT_FAILURE EXIT_SUCCESS);
@@ -44,7 +45,7 @@ our $VERSION = '0.9.0';
 
 our $URL = 'github.com/daybologic/twitch-tag-media';
 
-has jobs => (is => 'ro', isa => 'Int',  default => 1);
+has jobs => (is => 'ro', isa => 'Int', lazy => 1, default => \&__makeJobs);
 
 has [qw(atime ctime mtime)] => (is => 'ro', isa => 'Int', default => 0);
 
@@ -359,6 +360,28 @@ sub __logTagChanges {
 	return $changeCount;
 }
 
+=item C<__makeJobs()>
+
+Initializer for L</jobs>, if the user has not specified the number of concurrent jobs.
+Returns int.
+
+=cut
+
+sub __makeJobs {
+	my ($self) = @_;
+
+	my $count = Sys::CPU::cpu_count();
+	if ($count == 1) {
+		$self->__log($self->__marker(0) . 'not an SMP system');
+		return $count;
+	}
+
+	$self->__log(sprintf('%s%d cores detected, max jobs set to %d (use --jobs to override)',
+	    $self->__marker(0), $count, $count+1));
+
+	return ++$count;
+}
+
 =item C<__marker($pct)>
 
 Returns the C<[HH:MM:SS PCT%] > prefix string (including trailing space)
@@ -557,6 +580,7 @@ sub __printStats {
 	    if ($s->{total_files} > 0);
 	$plain .= sprintf("  Avg time/GiB:     %s\n", __fmtDuration($elapsed / ($total_mib / 1024)))
 	    if ($total_mib > 0);
+	$plain .= sprintf("  Concurrent jobs:  %d\n", $self->jobs);
 	$self->__log($self->__marker(100) . $plain);
 
 	return;
