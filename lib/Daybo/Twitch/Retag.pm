@@ -163,6 +163,8 @@ smallest unit.
 
 sub __fmtBytes {
 	my ($bytes) = @_;
+	$bytes = 0 unless(defined($bytes));
+
 	return sprintf('%.3f TiB (%d bytes)', $bytes / (1024 * 1024 * 1024 * 1024), $bytes) if ($bytes >= 1000 * 1024 * 1024 * 1024);
 	return sprintf('%.3f GiB (%d bytes)', $bytes / (1024 * 1024 * 1024), $bytes) if ($bytes >= 1024 * 1024 * 1024);
 	return sprintf('%.2f MiB (%d bytes)', $bytes / (1024 * 1024), $bytes) if ($bytes >= 1024 * 1024);
@@ -179,11 +181,16 @@ C<Hh MMm S.Ss>, C<Mm S.Ss>, or C<S.Ss> depending on magnitude.
 
 sub __fmtDuration {
 	my ($seconds) = @_;
-	my $h = int($seconds / 3600);
-	my $m = int(($seconds - $h * 3600) / 60);
-	my $s = $seconds - $h * 3600 - $m * 60;
-	return sprintf('%dh%02dm%.1fs', $h, $m, $s) if ($h > 0);
-	return sprintf('%dm%.1fs', $m, $s) if ($m > 0);
+
+	my ($h, $m, $s) = (0, 0, 0);
+	if ($seconds > 0) {
+		$h = int($seconds / 3600);
+		$m = int(($seconds - $h * 3600) / 60);
+		$s = $seconds - $h * 3600 - $m * 60;
+	}
+
+	return sprintf('%dh %02dm %.1fs', $h, $m, $s) if ($h > 0);
+	return sprintf('%dm %.1fs', $m, $s) if ($m > 0);
 	return sprintf('%.1fs', $s);
 }
 
@@ -200,6 +207,28 @@ sub __getExt {
 	my $ext = $arr[ scalar(@arr) - 1 ];
 	return '' if ($fn eq $ext);
 	return lc($ext);
+}
+
+sub __initStats {
+	my ($self) = @_;
+
+	$self->_stats({
+		total_files    => 0,
+		modified_files => 0,
+		skipped_files  => 0,
+		total_bytes    => 0,
+		modified_bytes => 0,
+		skipped_bytes  => 0,
+		change_count      => 0,
+		unqualified_bytes => 0,
+		unqualified_files => 0,
+		seen_files        => 0,
+		seen_bytes        => 0,
+		start_time        => time(),
+		end_time       => 0,
+	});
+
+	return;
 }
 
 =item C<__log($msg)>
@@ -236,7 +265,8 @@ changed).  Returns the number of fields that differ.
 sub __logTagChanges {
 	my ($self, $file, $pct, $existing, $artist, $album, $track, $year, $comment) = @_;
 
-	my (%JSON_changeLog, $plain_changeLog);
+	my %JSON_changeLog;
+	my $plain_changeLog = '';
 	my $changeCount = 0;
 
 	if ($self->json) {
@@ -249,8 +279,6 @@ sub __logTagChanges {
 			},
 			changes => [ ],
 		);
-	} else {
-		$plain_changeLog = $self->__marker($pct);
 	}
 
 	foreach my $f (
@@ -270,8 +298,10 @@ sub __logTagChanges {
 					old => $old,
 					new => $new,
 				});
+			} elsif ($old eq '') {
+				$plain_changeLog .= "${name}: \"${new}\", ";
 			} else {
-				$plain_changeLog .= "$name: \"$old\" -> \"$new\", ";
+				$plain_changeLog .= "${name}: \"${old}\" -> \"${new}\", ";
 			}
 		}
 	}
@@ -279,11 +309,16 @@ sub __logTagChanges {
 	if ($self->json) {
 		$JSON_changeLog{process}{message} = 'Tags unchanged, forced rewrite'
 		    if ($changeCount == 0);
+
 		$self->__log(\%JSON_changeLog);
 	} else {
-		$plain_changeLog = sprintf('%sTags unchanged, forcing rewrite for %s', $self->__marker($pct), $file)
-		    if ($changeCount == 0);
-		$self->__log($plain_changeLog);
+		if ($changeCount == 0) {
+			$plain_changeLog = sprintf("%sTags unchanged, forcing rewrite for '%s'", $self->__marker($pct), $file)
+		} else {
+			$plain_changeLog = "Tag changes for '$file': ${plain_changeLog}";
+		}
+
+		$self->__log($self->__marker($pct) . $plain_changeLog);
 	}
 
 	return $changeCount;
@@ -456,6 +491,7 @@ sub __printStats {
 				skipped_files       => $s->{skipped_files} + 0,
 				total_bytes         => $s->{total_bytes} + 0,
 				modified_bytes      => $s->{modified_bytes} + 0,
+				skipped_bytes       => $s->{skipped_bytes} + 0,
 				change_count        => $s->{change_count} + 0,
 				unqualified_bytes   => $s->{unqualified_bytes} + 0,
 				unqualified_files   => $s->{unqualified_files} + 0,
@@ -477,15 +513,16 @@ sub __printStats {
 	$plain .= sprintf("  Files skipped:    %d\n",   $s->{skipped_files});
 	$plain .= sprintf("  Total bytes:      %s\n",   __fmtBytes($s->{total_bytes}));
 	$plain .= sprintf("  Modified bytes:   %s\n",   __fmtBytes($s->{modified_bytes}));
+	$plain .= sprintf("  Skipped bytes:    %s\n",   __fmtBytes($s->{skipped_bytes}));
 	$plain .= sprintf("  Tag changes:      %d\n",   $s->{change_count});
 	$plain .= sprintf("  Unqualified files: %d\n",  $s->{unqualified_files});
 	$plain .= sprintf("  Unqualified bytes: %s\n",  __fmtBytes($s->{unqualified_bytes}));
-	$plain .= sprintf("  Total time:       %.3fs\n", $elapsed);
-	$plain .= sprintf("  Avg time/file:    %.3fs\n", $elapsed / $s->{total_files})
+	$plain .= sprintf("  Total time:       %s\n", __fmtDuration($elapsed));
+	$plain .= sprintf("  Avg time/file:    %s\n", __fmtDuration($elapsed / $s->{total_files}))
 	    if ($s->{total_files} > 0);
-	$plain .= sprintf("  Avg time/MiB:     %.3fs\n", $elapsed / $total_mib)
+	$plain .= sprintf("  Avg time/GiB:     %s\n", __fmtDuration($elapsed / ($total_mib / 1024)))
 	    if ($total_mib > 0);
-	$self->__log($plain);
+	$self->__log($self->__marker(100) . $plain);
 
 	return;
 }
@@ -517,6 +554,7 @@ sub __reapChild {
 				$self->_stats->{modified_bytes} += $entry->{size};
 			} else {
 				$self->_stats->{skipped_files}++;
+				$self->_stats->{skipped_bytes} += $entry->{size};
 			}
 			$self->_stats->{change_count} += $changeCount;
 		}
@@ -541,22 +579,9 @@ sub run {
 	$self->__originalProgramName($PROGRAM_NAME);
 	local $PROGRAM_NAME = sprintf('%s: main loop', $self->__originalProgramName);
 
-	$self->_stats({
-		total_files    => 0,
-		modified_files => 0,
-		skipped_files  => 0,
-		total_bytes    => 0,
-		modified_bytes => 0,
-		change_count      => 0,
-		unqualified_bytes => 0,
-		unqualified_files => 0,
-		seen_files        => 0,
-		seen_bytes        => 0,
-		start_time        => time(),
-		end_time       => 0,
-	});
+	$self->__initStats();
 
-	$self->__log("Walking file tree '$dirname'");
+	$self->__log($self->__marker(0) . "Walking file tree '$dirname'");
 	my $files = $self->__collect($dirname);
 	if (!ref($files) && $files == -1) {
 		return EXIT_FAILURE;
@@ -564,7 +589,7 @@ sub run {
 
 	my $total = scalar(@$files);
 	if ($total == 0) {
-		$self->__log('Nothing to do!');
+		$self->__log($self->__marker(0) . 'Nothing to do!');
 		return EXIT_SUCCESS;
 	}
 
@@ -598,13 +623,11 @@ sub run {
 			$progress{eta_s} = $eta + 0 if (defined($eta));
 			$self->__log(\%progress);
 		} else {
-			my $timing;
-			if (defined($eta)) {
-				$timing = sprintf(', elapsed: %s, ETA: %s', __fmtDuration($elapsed), __fmtDuration($eta));
-			} else {
-				$timing = sprintf(', elapsed: %s', __fmtDuration($elapsed));
-			}
-			$self->__log(sprintf('%sTagging %s%s', $self->__marker($pct), $relPath, $timing));
+			my $timing = '';
+			$timing = sprintf(', ETA: %s', __fmtDuration($eta))
+			    if (defined($eta));
+
+			$self->__log(sprintf("%sReading '%s'%s", $self->__marker($pct), $relPath, $timing));
 		}
 
 		$self->__tag(
@@ -712,8 +735,9 @@ sub __tagPerProcess {
 			},
 		});
 	} else {
-		$self->__log(sprintf('%sartist: %s, album: %s, track: %s, year: %s',
-		    $self->__marker($pct), $artist, $album, $track, $year));
+#		$self->__log(sprintf('%sartist: "%s", album: "%s", track: "%s", year: "%s"',
+#		    $self->__marker($pct), $artist, $album, $track, $year));
+#FIXME
 	}
 
 	local $PROGRAM_NAME = sprintf('%s: reading "%s"', $self->__originalProgramName, $file);
@@ -728,7 +752,7 @@ sub __tagPerProcess {
 	    && ($existing->{year}    // '') eq $year
 	    && ($existing->{comment} // '') eq $comment
 	) {
-		$self->__log(sprintf('%sTags unchanged, skipping %s', $self->__marker($pct), $file));
+		$self->__log(sprintf("%sTags unchanged, skipping '%s'", $self->__marker($pct), $file));
 		return (0, 0);
 	}
 
