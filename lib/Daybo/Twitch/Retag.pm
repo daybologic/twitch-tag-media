@@ -48,8 +48,10 @@ has jobs => (is => 'ro', isa => 'Int',  default => 1);
 
 has [qw(atime ctime mtime)] => (is => 'ro', isa => 'Int', default => 0);
 
-has [qw(force json noop random recursive verbose)]
+has [qw(force json noop random recursive)]
     => (is => 'ro', isa => 'Bool', default => 0);
+
+has verbose => (is => 'rw', isa => 'Bool', default => 0);
 
 has _stats => (is => 'rw', isa => 'HashRef', default => sub { return {}; });
 
@@ -58,6 +60,19 @@ has __originalProgramName => (is => 'rw', isa => 'Str');
 has _tagWrap => (is => 'ro', isa => 'Daybo::Twitch::TagWrap', default => sub { Daybo::Twitch::TagWrap->new() });
 
 my @pids;
+
+=item C<BUILD()>
+
+Moose post-construction hook.  Sets C<verbose> if C<json> is active,
+since C<--json> implies C<--verbose>.
+
+=cut
+
+sub BUILD {
+	my ($self) = @_;
+	$self->verbose(1) if ($self->json);
+	return;
+}
 
 =item C<__acceptableDirName($dirName)>
 
