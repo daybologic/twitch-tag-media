@@ -599,30 +599,49 @@ sub __reapChild {
 	return;
 }
 
-=item C<run($dirname)>
+=item C<run(@paths)>
 
-Public entry point.  Initializes stats, walks C<$dirname> via
-C<__collect>, dispatches each qualifying file to C<__tag>, waits for all
-child processes to finish, then prints the run summary.  Returns
-C<EXIT_SUCCESS> or C<EXIT_FAILURE>.
+Public entry point.  Initializes stats, then iterates over C<@paths>:
+plain files are examined directly; directories are walked via
+C<__collect> (recursing only when C<--recursive> is set).  Dispatches
+each qualifying file to C<__tag>, waits for all child processes to
+finish, then prints the run summary.  Returns C<EXIT_SUCCESS> or
+C<EXIT_FAILURE>.
 
 =cut
 
 sub run {
-	my ($self, $dirname) = @_;
+	my ($self, @paths) = @_;
 
 	$self->__originalProgramName($PROGRAM_NAME);
 	local $PROGRAM_NAME = sprintf('%s: main loop', $self->__originalProgramName);
 
 	$self->__initStats();
 
-	$self->__log($self->__marker(0) . "Walking file tree '$dirname'");
-	my $files = $self->__collect($dirname);
-	if (!ref($files) && $files == -1) {
-		return EXIT_FAILURE;
+	my @files;
+	for my $path (@paths) {
+		if (-f $path) {
+			my ($filename) = ($path =~ m{([^/]+)$});
+			my $ext = __getExt($filename);
+			my $size = -s $path;
+			$self->_stats->{seen_files}++;
+			$self->_stats->{seen_bytes} += $size;
+			if ($self->_tagWrap->isExtSupported($ext) && __acceptableFileName($filename) && __parseFileName($filename)) {
+				push(@files, [ $path, $filename, $size, $ext ]);
+			} else {
+				$self->_stats->{unqualified_bytes} += $size;
+				$self->_stats->{unqualified_files}++;
+			}
+		} elsif (-d $path) {
+			$self->__log($self->__marker(0) . "Walking '$path'");
+			my $sub = $self->__collect($path);
+			push(@files, @{$sub}) if ref($sub);
+		} else {
+			warn "No such file or directory: '$path'\n";
+		}
 	}
 
-	my $total = scalar(@$files);
+	my $total = scalar(@files);
 	if ($total == 0) {
 		$self->__log($self->__marker(0) . 'Nothing to do!');
 		return EXIT_SUCCESS;
@@ -631,12 +650,12 @@ sub run {
 	my $weighted = $ENV{EXPERIMENTAL_PROGRESS};
 	my ($totalBytes, $doneBytes);
 	if ($weighted) {
-		$totalBytes += $_->[2] for @$files;
+		$totalBytes += $_->[2] for @files;
 		$doneBytes = 0;
 	}
 
-	for (my $i = 0; $i < scalar(@$files); $i++) {
-		my ($relPath, $filename, $size, $ext) = @{ $files->[$i] };
+	for (my $i = 0; $i < scalar(@files); $i++) {
+		my ($relPath, $filename, $size, $ext) = @{ $files[$i] };
 		my $pct;
 		if ($weighted) {
 			$doneBytes += $size;
@@ -839,8 +858,8 @@ Prints a usage summary to stdout and returns 1.
 
 sub usage {
 	printf("twitch-tag-media %s usage:\n", $VERSION);
-	print("twitch-tag-media --directory <DIR> [--atime <S>] [--ctime <S>] [--force] [--help] [--jobs <N>] [--json] [--mtime <S>] [--noop] [--random] [--recursive] [--verbose] [--version]\n");
-	print("twitch-tag-media -d <DIR> [-f] [-h] [-j <N>] [-J] [-n] [-R] [-r] [-v] [-V]\n\n");
+	print("twitch-tag-media [--atime <S>] [--ctime <S>] [--force] [--help] [--jobs <N>] [--json] [--mtime <S>] [--noop] [--random] [--recursive] [--verbose] [--version] PATH [PATH...]\n");
+	print("twitch-tag-media [-f] [-h] [-j <N>] [-J] [-n] [-R] [-r] [-v] [-V] PATH [PATH...]\n\n");
 	printf("See https://%s for more information.\n", $URL);
 	return 1;
 }

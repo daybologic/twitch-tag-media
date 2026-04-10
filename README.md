@@ -36,11 +36,13 @@ Any feedback on this is welcome.  The author is happy to make reasonable adjustm
 ## Usage
 
 ```
-twitch-tag-media --directory <DIR> [--force] [--help] [--jobs <N>] [--json] [--noop] [--recursive] [--verbose] [--version]
-twitch-tag-media -d <DIR> [-f] [-h] [-j <N>] [-J] [-n] [-r] [-v] [-V]
+twitch-tag-media [--atime <S>] [--ctime <S>] [--force] [--help] [--jobs <N>] [--json] [--mtime <S>] [--noop] [--random] [--recursive] [--verbose] [--version] PATH [PATH...]
+twitch-tag-media [-f] [-h] [-j <N>] [-J] [-n] [-R] [-r] [-v] [-V] PATH [PATH...]
 ```
 
-Add MP3 ID3 tags to a file downloaded from Twitch using yt-dlp
+Add MP3/MP4 tags to media files downloaded from Twitch using yt-dlp.  Each
+`PATH` may be a file or a directory; directories are walked one level deep
+unless `--recursive` is also given.
 
 | Option | Short | Description |
 |--------|-------|-------------|
