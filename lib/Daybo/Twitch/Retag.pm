@@ -109,8 +109,13 @@ sub __collect {
 			$self->_stats->{seen_bytes} += $size;
 
 			if ($self->_tagWrap->isExtSupported($ext)) {
-				__parseFileName($filename);
-				push(@files, [ $relPath, $filename, $size, $ext ]);
+				if (__parseFileName($filename)) {
+					push(@files, [ $relPath, $filename, $size, $ext ]);
+				} else {
+					$self->__log($self->__marker(0) . "Cannot parse filename structure: '$filename'");
+					$self->_stats->{unqualified_bytes} += $size;
+					$self->_stats->{unqualified_files}++;
+				}
 			} else {
 				$self->_stats->{unqualified_bytes} += $size;
 				$self->_stats->{unqualified_files}++;
@@ -423,7 +428,7 @@ C<ArtistHandle-YYYY-MM-DD.ext>
 
 =back
 
-Dies if none of the patterns match.
+Returns C<undef> if none of the patterns match.
 
 =cut
 
@@ -466,7 +471,7 @@ sub __parseFileName {
 		return $__filenameParserContext{$filename} = [ $artist, $album, $track, $year ];
 	}
 
-	die("Cannot parse filename structure: '$filename'");
+	return;
 }
 
 =item C<__printStats()>
