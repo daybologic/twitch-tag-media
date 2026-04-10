@@ -33,7 +33,7 @@
 
 Usage:
 
-	twitch-tag-media --directory <DIR> [--force] [--help] [--jobs <N>] [--json] [--noop] [--random] [--recursive] [--verbose] [--version]
+	twitch-tag-media --directory <DIR> [--atime <S>] [--ctime <S>] [--force] [--help] [--jobs <N>] [--json] [--mtime <S>] [--noop] [--random] [--recursive] [--verbose] [--version]
 	twitch-tag-media -d <DIR> [-f] [-h] [-j <N>] [-J] [-n] [-R] [-r] [-v] [-V]
 
 Add tags to media files downloaded from Twitch using yt-dlp
@@ -60,10 +60,13 @@ C<exit>.
 
 sub main {
 	my $startDir;
+	my $atime = 0;
+	my $ctime = 0;
 	my $force = 0;
 	my $help = 0;
 	my $jobs = 1;
 	my $json = 0;
+	my $mtime = 0;
 	my $noop = 0;
 	my $random = 0;
 	my $recursive = 0;
@@ -71,11 +74,14 @@ sub main {
 	my $version = 0;
 
 	return EXIT_FAILURE unless (GetOptions(
+		'atime=i' => \$atime,
+		'ctime=i' => \$ctime,
 		'directory|d=s' => \$startDir,
 		'force|f' => \$force,
 		'help|h' => \$help,
 		'jobs|j=i' => \$jobs,
 		'json|J' => \$json,
+		'mtime=i' => \$mtime,
 		'noop|n' => \$noop,
 		'random|R' => \$random,
 		'recursive|r' => \$recursive,
@@ -89,9 +95,12 @@ sub main {
 	}
 
 	my $retagger = Daybo::Twitch::Retag->new(
+		atime => $atime,
+		ctime => $ctime,
 		force => $force,
 		jobs => $jobs,
 		json => $json,
+		mtime => $mtime,
 		noop => $noop,
 		random => $random,
 		recursive => $recursive,

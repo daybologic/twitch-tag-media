@@ -48,6 +48,9 @@ Add MP3 ID3 tags to a file downloaded from Twitch using yt-dlp
 | `--help` | `-h` | Display this usage information and exit |
 | `--jobs <N>` | `-j <N>` | Allow parallel I/O (default 1) |
 | `--json` | `-J` | Emit newline-delimited JSON events instead of human-readable text (see below) |
+| `--atime <S>` | | Skip files whose atime is too recent (same threshold semantics as `--mtime`).  Not overridden by `--force` |
+| `--ctime <S>` | | Skip files whose ctime is too recent (same threshold semantics as `--mtime`).  Not overridden by `--force` |
+| `--mtime <S>` | | Skip files whose mtime is too recent: values ≤ 604800 are a maximum file age in seconds; larger values are an absolute Unix timestamp cutoff.  Not overridden by `--force` |
 | `--noop` | `-n` | Preview the tags which would be written without modifying any files |
 | `--recursive` | `-r` | Descend into subdirectories |
 | `--verbose` | `-v` | See verbose progress (with elapsed time and ETA), tag information, and a run summary |
