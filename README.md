@@ -46,6 +46,7 @@ unless `--recursive` is also given.
 
 | Option | Short | Description |
 |--------|-------|-------------|
+| `--delay <S>` | `-d <S>` | Pause for S seconds between files (fractional, e.g. `0.001` for 1 ms) |
 | `--force` | `-f` | Rewrite tags even when already up to date |
 | `--help` | `-h` | Display this usage information and exit |
 | `--jobs <N>` | `-j <N>` | Allow parallel I/O (default 1) |

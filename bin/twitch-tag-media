@@ -33,8 +33,8 @@
 
 Usage:
 
-	twitch-tag-media [--atime <S>] [--ctime <S>] [--force] [--help] [--jobs <N>] [--json] [--mtime <S>] [--noop] [--random] [--recursive] [--verbose] [--version] PATH [PATH...]
-	twitch-tag-media [-f] [-h] [-j <N>] [-J] [-n] [-R] [-r] [-v] [-V] PATH [PATH...]
+	twitch-tag-media [--atime <S>] [--ctime <S>] [--delay <S>] [--force] [--help] [--jobs <N>] [--json] [--mtime <S>] [--noop] [--random] [--recursive] [--verbose] [--version] PATH [PATH...]
+	twitch-tag-media [-d <S>] [-f] [-h] [-j <N>] [-J] [-n] [-R] [-r] [-v] [-V] PATH [PATH...]
 
 Add tags to media files downloaded from Twitch using yt-dlp
 
@@ -61,6 +61,7 @@ C<exit>.
 sub main {
 	my $atime = 0;
 	my $ctime = 0;
+	my $delay = 0;
 	my $force = 0;
 	my $help = 0;
 	my $jobs;
@@ -75,6 +76,7 @@ sub main {
 	return EXIT_FAILURE unless (GetOptions(
 		'atime=i' => \$atime,
 		'ctime=i' => \$ctime,
+		'delay|d=f' => \$delay,
 		'force|f' => \$force,
 		'help|h' => \$help,
 		'jobs|j=i' => \$jobs,
@@ -95,6 +97,7 @@ sub main {
 	my %params = (
 		atime => $atime,
 		ctime => $ctime,
+		delay => $delay,
 		force => $force,
 		json => $json,
 		mtime => $mtime,
