@@ -136,7 +136,7 @@ Emitted once at the end of a run (requires `--verbose`).  Summarises the entire 
     "skipped_files":         4,
     "total_bytes":    1234567890,
     "modified_bytes": 1100000000,
-    "change_count":        190,
+    "tags_altered":        380,
     "elapsed_s":          45.3,
     "avg_time_per_file_s": 1.079,
     "avg_time_per_mib_s":  0.038
@@ -145,9 +145,9 @@ Emitted once at the end of a run (requires `--verbose`).  Summarises the entire 
 ```
 
 `skipped_files` counts files whose tags were already correct (no write needed).
-`change_count` is the total number of individual tag fields that differed from the existing
+`tags_altered` is the total number of individual tag fields that differed from the existing
 values across all modified files.  Under `--noop`, `modified_files` is always 0 but
-`change_count` still reflects what would have changed.
+`tags_altered` still reflects what would have changed.
 
 ## Experimental features
 
