@@ -255,7 +255,7 @@ sub __initStats {
 		total_bytes    => 0,
 		modified_bytes => 0,
 		skipped_bytes  => 0,
-		change_count      => 0,
+		tags_altered      => 0,
 		unqualified_bytes => 0,
 		unqualified_files => 0,
 		seen_files        => 0,
@@ -351,7 +351,7 @@ sub __logTagChanges {
 		if ($changeCount == 0) {
 			$plain_changeLog = sprintf("%sTags unchanged, forcing rewrite for '%s'", $self->__marker($pct), $file)
 		} else {
-			$plain_changeLog = "Tag changes for '$file': ${plain_changeLog}";
+			$plain_changeLog = "Tags altered for '$file': ${plain_changeLog}";
 		}
 
 		$self->__log($self->__marker($pct) . $plain_changeLog);
@@ -550,7 +550,7 @@ sub __printStats {
 				total_bytes         => $s->{total_bytes} + 0,
 				modified_bytes      => $s->{modified_bytes} + 0,
 				skipped_bytes       => $s->{skipped_bytes} + 0,
-				change_count        => $s->{change_count} + 0,
+				tags_altered        => $s->{tags_altered} + 0,
 				unqualified_bytes   => $s->{unqualified_bytes} + 0,
 				unqualified_files   => $s->{unqualified_files} + 0,
 				seen_files          => $s->{seen_files} + 0,
@@ -572,7 +572,7 @@ sub __printStats {
 	$plain .= sprintf("  Total bytes:      %s\n",   __fmtBytes($s->{total_bytes}));
 	$plain .= sprintf("  Modified bytes:   %s\n",   __fmtBytes($s->{modified_bytes}));
 	$plain .= sprintf("  Skipped bytes:    %s\n",   __fmtBytes($s->{skipped_bytes}));
-	$plain .= sprintf("  Tag changes:      %d\n",   $s->{change_count});
+	$plain .= sprintf("  Tags altered:     %d\n",   $s->{tags_altered});
 	$plain .= sprintf("  Unqualified files: %d\n",  $s->{unqualified_files});
 	$plain .= sprintf("  Unqualified bytes: %s\n",  __fmtBytes($s->{unqualified_bytes}));
 	$plain .= sprintf("  Total time:       %s\n", __fmtDuration($elapsed));
@@ -615,7 +615,7 @@ sub __reapChild {
 				$self->_stats->{skipped_files}++;
 				$self->_stats->{skipped_bytes} += $entry->{size};
 			}
-			$self->_stats->{change_count} += $changeCount;
+			$self->_stats->{tags_altered} += $changeCount;
 		}
 	}
 
