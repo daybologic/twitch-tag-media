@@ -36,9 +36,14 @@ extends 'Daybo::Twitch::TagWrap::Backend';
 use English qw(-no_match_vars);
 use File::Spec;
 
+=item C<deleteTags($file)>
+
+No-op for MKV files; tag removal is handled implicitly by C<writeTags>.
+
+=cut
+
 sub deleteTags {
-	my ($self, $file) = @_;
-	return;
+	# no-op
 }
 
 sub readTags {
