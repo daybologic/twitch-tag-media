@@ -107,6 +107,10 @@ sub main {
 		verbose => $verbose,
 	);
 
+	if ($delay > 0 && $delay < 0.001) {
+		print STDERR "Warning: --delay $delay is below the 1ms precision threshold\n";
+	}
+
 	if (defined($jobs)) {
 		if ($jobs < 1) {
 			print STDERR "Error: --jobs must be at least 1\n";
