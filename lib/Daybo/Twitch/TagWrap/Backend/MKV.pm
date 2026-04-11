@@ -47,9 +47,40 @@ sub deleteTags {
 	# no-op
 }
 
+=item C<readTags($file)>
+
+Runs C<mkvextract tags FILE> and parses the Matroska XML output to
+extract the canonical tag fields (artist, album, track, year, comment).
+Returns a hash ref of the fields found, or C<undef> if none are present.
+
+=cut
+
+my %__reverseTagMap = (
+	ALBUM         => 'album',
+	ARTIST        => 'artist',
+	COMMENT       => 'comment',
+	DATE_RELEASED => 'year',
+	TITLE         => 'track',
+);
+
 sub readTags {
 	my ($self, $file) = @_;
-	return;
+
+	open(my $fh, '-|', 'mkvextract', 'tags', $file) or return;
+	local $INPUT_RECORD_SEPARATOR = undef;
+	my $xml = <$fh>;
+	close($fh);
+
+	return unless defined($xml);
+
+	my %tags;
+	while ($xml =~ m{<Simple>\s*<Name>([^<]+)</Name>\s*<String>([^<]*)</String>\s*</Simple>}g) {
+		my ($name, $value) = ($1, $2);
+		my $field = $__reverseTagMap{$name};
+		$tags{$field} = __xmlUnescape($value) if (defined($field));
+	}
+
+	return %tags ? \%tags : undef;
 }
 
 =item C<writeTags($file, $artist, $album, $track, $year, $comment)>
@@ -117,6 +148,23 @@ sub __xmlEscape {
 	$str =~ s/</&lt;/g;
 	$str =~ s/>/&gt;/g;
 	$str =~ s/"/&quot;/g;
+	return $str;
+}
+
+=item C<__xmlUnescape($str)>
+
+Reverses the escaping applied by C<__xmlEscape>: restores C<&amp;>,
+C<&lt;>, C<&gt;>, and C<&quot;> to their literal characters.
+Returns the unescaped string.
+
+=cut
+
+sub __xmlUnescape {
+	my ($str) = @_;
+	$str =~ s/&quot;/"/g;
+	$str =~ s/&gt;/>/g;
+	$str =~ s/&lt;/</g;
+	$str =~ s/&amp;/&/g;
 	return $str;
 }
 
