@@ -36,6 +36,7 @@ extends 'Daybo::Twitch::TagWrap::Backend';
 use English qw(-no_match_vars);
 use File::Spec;
 use File::Temp qw(tempfile);
+use Readonly;
 
 =item C<deleteTags($file)>
 
@@ -55,13 +56,15 @@ Returns a hash ref of the fields found, or C<undef> if none are present.
 
 =cut
 
-my %__reverseTagMap = (
-	ALBUM         => 'album',
-	ARTIST        => 'artist',
-	COMMENT       => 'comment',
-	DATE_RELEASED => 'year',
-	TITLE         => 'track',
+Readonly my %__tagMap => (
+	album   => 'ALBUM',
+	artist  => 'ARTIST',
+	comment => 'COMMENT',
+	track   => 'TITLE',
+	year    => 'DATE_RELEASED',
 );
+
+Readonly my %__reverseTagMap => reverse %__tagMap;
 
 sub readTags {
 	my ($self, $file) = @_;
@@ -91,14 +94,6 @@ calls C<mkvpropedit --tags global:TMPFILE FILE>.  The temporary XML file
 is removed after the call.  No return value.
 
 =cut
-
-my %__tagMap = (
-	album   => 'ALBUM',
-	artist  => 'ARTIST',
-	comment => 'COMMENT',
-	track   => 'TITLE',
-	year    => 'DATE_RELEASED',
-);
 
 sub writeTags {
 	my ($self, $file, $artist, $album, $track, $year, $comment) = @_;
