@@ -391,7 +391,7 @@ used at the start of every plain-text log marker.
 
 sub __marker {
 	my ($self, $pct) = @_;
-	return sprintf('[%s %3d%%] ', $self->__stamp(), $pct);
+	return sprintf('[%s %6.2f%%] ', $self->__stamp(), $pct);
 }
 
 =item C<__normalizeArtist($artistRaw)>
@@ -683,9 +683,9 @@ sub run {
 		my $pct;
 		if ($weighted) {
 			$doneBytes += $size;
-			$pct = $totalBytes > 0 ? int($doneBytes / $totalBytes * 100) : 100;
+			$pct = $totalBytes > 0 ? $doneBytes / $totalBytes * 100 : 100;
 		} else {
-			$pct = $total > 0 ? int(($i + 1) / $total * 100) : 100;
+			$pct = $total > 0 ? ($i + 1) / $total * 100 : 100;
 		}
 		my $now = time();
 		my $elapsed = $now - $self->_stats->{start_time};
