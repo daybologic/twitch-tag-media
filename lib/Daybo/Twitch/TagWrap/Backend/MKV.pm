@@ -35,6 +35,7 @@ extends 'Daybo::Twitch::TagWrap::Backend';
 
 use English qw(-no_match_vars);
 use File::Spec;
+use File::Temp qw(tempfile);
 
 =item C<deleteTags($file)>
 
@@ -51,9 +52,72 @@ sub readTags {
 	return;
 }
 
+=item C<writeTags($file, $artist, $album, $track, $year, $comment)>
+
+Writes Matroska global tags to C<$file> using C<mkvpropedit>.  Builds an
+XML tag file (Matroska tag format), writes it to a temporary file, then
+calls C<mkvpropedit --tags global:TMPFILE FILE>.  The temporary XML file
+is removed after the call.  No return value.
+
+=cut
+
+my %__tagMap = (
+	album   => 'ALBUM',
+	artist  => 'ARTIST',
+	comment => 'COMMENT',
+	track   => 'TITLE',
+	year    => 'DATE_RELEASED',
+);
+
 sub writeTags {
 	my ($self, $file, $artist, $album, $track, $year, $comment) = @_;
+
+	my %values = (
+		album   => $album,
+		artist  => $artist,
+		comment => $comment,
+		track   => $track,
+		year    => $year,
+	);
+
+	my $xml = qq{<?xml version="1.0" encoding="UTF-8"?>\n};
+	$xml .= qq{<!DOCTYPE Tags SYSTEM "matroskatags.dtd">\n};
+	$xml .= "<Tags>\n<Tag>\n<Targets/>\n";
+	for my $field (sort keys %__tagMap) {
+		next unless (defined($values{$field}) && length($values{$field}));
+		$xml .= sprintf("<Simple><Name>%s</Name><String>%s</String></Simple>\n",
+			$__tagMap{$field}, __xmlEscape($values{$field}));
+	}
+	$xml .= "</Tag>\n</Tags>\n";
+
+	my ($fh, $temp) = tempfile(
+		'.twitch-tag-mkvpropedit.XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+		SUFFIX => '.xml',
+		UNLINK => 0,
+	);
+	print $fh $xml;
+	close($fh);
+
+	$self->_system('mkvpropedit', '--tags', "global:${temp}", $file);
+	unlink($temp);
+
 	return;
+}
+
+=item C<__xmlEscape($str)>
+
+Escapes C<&>, C<E<lt>>, C<E<gt>>, and C<"> in C<$str> for safe inclusion
+in XML character data.  Returns the escaped string.
+
+=cut
+
+sub __xmlEscape {
+	my ($str) = @_;
+	$str =~ s/&/&amp;/g;
+	$str =~ s/</&lt;/g;
+	$str =~ s/>/&gt;/g;
+	$str =~ s/"/&quot;/g;
+	return $str;
 }
 
 1;
