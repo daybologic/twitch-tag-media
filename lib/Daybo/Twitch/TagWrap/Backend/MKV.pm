@@ -74,7 +74,7 @@ sub readTags {
 	return unless defined($xml);
 
 	my %tags;
-	while ($xml =~ m{<Simple>\s*<Name>([^<]+)</Name>\s*<String>([^<]*)</String>\s*</Simple>}g) {
+	while ($xml =~ m{<Simple>\s*<Name>([^<]+)</Name>\s*<String>([^<]*)</String>.*?</Simple>}gs) {
 		my ($name, $value) = ($1, $2);
 		my $field = $__reverseTagMap{$name};
 		$tags{$field} = __xmlUnescape($value) if (defined($field));
