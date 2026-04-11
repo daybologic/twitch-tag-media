@@ -36,7 +36,7 @@ use IO::File;
 use JSON::PP qw(encode_json);
 use List::Util qw(shuffle);
 use Sys::CPU qw();
-use Time::HiRes qw(time);
+use Time::HiRes qw(sleep time);
 use Moose;
 use POSIX qw(EXIT_FAILURE EXIT_SUCCESS);
 use Daybo::Twitch::TagWrap;
@@ -48,6 +48,8 @@ our $URL = 'github.com/daybologic/twitch-tag-media';
 has jobs => (is => 'ro', isa => 'Int', lazy => 1, default => \&__makeJobs);
 
 has [qw(atime ctime mtime)] => (is => 'ro', isa => 'Int', default => 0);
+
+has delay => (is => 'ro', isa => 'Num', default => 0);
 
 has [qw(force json noop random recursive)]
     => (is => 'ro', isa => 'Bool', default => 0);
@@ -715,6 +717,7 @@ sub run {
 			$ext,
 			@{ __parseFileName($filename) },
 		);
+		sleep($self->delay) if ($self->delay > 0);
 	}
 
 	while (@pids) {
@@ -882,8 +885,8 @@ Prints a usage summary to stdout and returns 1.
 
 sub usage {
 	printf("twitch-tag-media %s usage:\n", $VERSION);
-	print("twitch-tag-media [--atime <S>] [--ctime <S>] [--force] [--help] [--jobs <N>] [--json] [--mtime <S>] [--noop] [--random] [--recursive] [--verbose] [--version] PATH [PATH...]\n");
-	print("twitch-tag-media [-f] [-h] [-j <N>] [-J] [-n] [-R] [-r] [-v] [-V] PATH [PATH...]\n\n");
+	print("twitch-tag-media [--atime <S>] [--ctime <S>] [--delay <S>] [--force] [--help] [--jobs <N>] [--json] [--mtime <S>] [--noop] [--random] [--recursive] [--verbose] [--version] PATH [PATH...]\n");
+	print("twitch-tag-media [-d <S>] [-f] [-h] [-j <N>] [-J] [-n] [-R] [-r] [-v] [-V] PATH [PATH...]\n\n");
 	printf("See https://%s for more information.\n", $URL);
 	return 1;
 }
