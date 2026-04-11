@@ -20,7 +20,8 @@ Depends: ${shlibs:Depends}, ${misc:Depends},
  id3v2,
  libipc-run3-perl,
  libmoose-perl,
- libsys-cpu-perl
+ libsys-cpu-perl,
+ mkvtoolnix
 Description: Perl program for tagging Twitch media files
  If you have used yt-dlp to download MP3 or MP4 files from Twitch,
  this program can set suitable tags on those files, recursively,
