@@ -41,7 +41,7 @@ use Moose;
 use POSIX qw(EXIT_FAILURE EXIT_SUCCESS);
 use Daybo::Twitch::TagWrap;
 
-our $VERSION = '0.9.0';
+our $VERSION = '0.10.0';
 
 our $URL = 'github.com/daybologic/twitch-tag-media';
 
