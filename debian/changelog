@@ -1,3 +1,26 @@
+twitch-tag-media (0.10.0) stable; urgency=low
+
+  * Add MKV support via mkvpropedit: read/write tags to Matroska files
+    (#73).
+  * Add --delay/-d flag to throttle file dispatch rate; supports
+    sub-millisecond precision.
+  * Add --atime, --ctime, --mtime flags to skip recently-modified files.
+  * Switch percentage display to two decimal places (#76).
+  * Add elapsed time and ETA to per-file progress messages.
+  * Replace --directory/-d with positional PATH arguments; supports
+    multiple directories.
+  * Add dynamic concurrency mode: --jobs=0 auto-adjusts to CPU count per
+    iteration (#66).
+  * Rename 'Tag changes' stat to 'Tags altered' to clarify it counts tag
+    fields, not files.
+  * Fix --json to imply --verbose (#54).
+  * Fix: skip .temp.<ext> files still being downloaded by yt-dlp (#75).
+  * Fix: treat unrecognised filename patterns as unqualified (#64).
+  * Add mkvtoolnix, ffmpeg, libuniversal-require-perl, and
+    libreadonly-perl to Debian runtime dependencies.
+
+ -- Rev. Duncan Ross Palmer <2e0eol@gmail.com>  Tue, 14 Apr 2026 21:30:00 +0100
+
 twitch-tag-media (0.9.0) stable; urgency=low
 
   * Add --random/-R flag to randomize the order files are processed.
