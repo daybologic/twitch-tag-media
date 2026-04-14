@@ -33,7 +33,7 @@ set -euo pipefail
 
 . inc/setUp.sh
 
-perl "-I${LIBDIR}" "${EXE}" -d "${rootDir}" --noop
+perl "-I${LIBDIR}" "${EXE}" --noop "${rootDir}"
 
 COMMENT=""
 

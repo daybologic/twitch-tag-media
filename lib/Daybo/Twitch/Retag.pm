@@ -35,7 +35,8 @@ use IO::Dir;
 use IO::File;
 use JSON::PP qw(encode_json);
 use List::Util qw(shuffle);
-use Time::HiRes qw(time);
+use Sys::CPU qw();
+use Time::HiRes qw(sleep time);
 use Moose;
 use POSIX qw(EXIT_FAILURE EXIT_SUCCESS);
 use Daybo::Twitch::TagWrap;
@@ -44,10 +45,16 @@ our $VERSION = '0.9.0';
 
 our $URL = 'github.com/daybologic/twitch-tag-media';
 
-has jobs => (is => 'ro', isa => 'Int',  default => 1);
+has jobs => (is => 'ro', isa => 'Int', lazy => 1, default => \&__makeJobs);
 
-has [qw(force json noop random recursive verbose)]
+has [qw(atime ctime mtime)] => (is => 'ro', isa => 'Int', default => 0);
+
+has delay => (is => 'ro', isa => 'Num', default => 0);
+
+has [qw(force json noop random recursive)]
     => (is => 'ro', isa => 'Bool', default => 0);
+
+has verbose => (is => 'rw', isa => 'Bool', default => 0);
 
 has _stats => (is => 'rw', isa => 'HashRef', default => sub { return {}; });
 
@@ -56,6 +63,19 @@ has __originalProgramName => (is => 'rw', isa => 'Str');
 has _tagWrap => (is => 'ro', isa => 'Daybo::Twitch::TagWrap', default => sub { Daybo::Twitch::TagWrap->new() });
 
 my @pids;
+
+=item C<BUILD()>
+
+Moose post-construction hook.  Sets C<verbose> if C<json> is active,
+since C<--json> implies C<--verbose>.
+
+=cut
+
+sub BUILD {
+	my ($self) = @_;
+	$self->verbose(1) if ($self->json);
+	return;
+}
 
 =item C<__acceptableDirName($dirName)>
 
@@ -67,6 +87,19 @@ directory that should never be walked).
 sub __acceptableDirName {
 	my ($dirName) = @_;
 	return ($dirName ne '@eaDir');
+}
+
+=item C<__acceptableFileName($filename)>
+
+Returns false if C<$filename> has a C<.temp.> penultimate extension
+(e.g. C<foo.temp.mp4>), which indicates a file still being downloaded
+by yt-dlp.  Returns true otherwise.
+
+=cut
+
+sub __acceptableFileName {
+	my ($filename) = @_;
+	return ($filename !~ /\.temp\.[^.]+$/i);
 }
 
 =item C<__collect($dirname)>
@@ -106,9 +139,14 @@ sub __collect {
 			$self->_stats->{seen_files}++;
 			$self->_stats->{seen_bytes} += $size;
 
-			if ($self->_tagWrap->isExtSupported($ext)) {
-				__parseFileName($filename);
-				push(@files, [ $relPath, $filename, $size, $ext ]);
+			if ($self->_tagWrap->isExtSupported($ext) && __acceptableFileName($filename)) {
+				if (__parseFileName($filename)) {
+					push(@files, [ $relPath, $filename, $size, $ext ]);
+				} else {
+					$self->__log($self->__marker(0) . "Cannot parse filename structure: '$filename'");
+					$self->_stats->{unqualified_bytes} += $size;
+					$self->_stats->{unqualified_files}++;
+				}
 			} else {
 				$self->_stats->{unqualified_bytes} += $size;
 				$self->_stats->{unqualified_files}++;
@@ -163,11 +201,35 @@ smallest unit.
 
 sub __fmtBytes {
 	my ($bytes) = @_;
+	$bytes = 0 unless(defined($bytes));
+
 	return sprintf('%.3f TiB (%d bytes)', $bytes / (1024 * 1024 * 1024 * 1024), $bytes) if ($bytes >= 1000 * 1024 * 1024 * 1024);
 	return sprintf('%.3f GiB (%d bytes)', $bytes / (1024 * 1024 * 1024), $bytes) if ($bytes >= 1024 * 1024 * 1024);
 	return sprintf('%.2f MiB (%d bytes)', $bytes / (1024 * 1024), $bytes) if ($bytes >= 1024 * 1024);
 	return sprintf('%.1f KiB (%d bytes)', $bytes / 1024, $bytes) if ($bytes >= 1024);
 	return sprintf('%d bytes', $bytes);
+}
+
+=item C<__fmtDuration($seconds)>
+
+Formats a duration in seconds as a human-readable string.  Emits
+C<Hh MMm S.Ss>, C<Mm S.Ss>, or C<S.Ss> depending on magnitude.
+
+=cut
+
+sub __fmtDuration {
+	my ($seconds) = @_;
+
+	my ($h, $m, $s) = (0, 0, 0);
+	if ($seconds > 0) {
+		$h = int($seconds / 3600);
+		$m = int(($seconds - $h * 3600) / 60);
+		$s = $seconds - $h * 3600 - $m * 60;
+	}
+
+	return sprintf('%dh %02dm %.1fs', $h, $m, $s) if ($h > 0);
+	return sprintf('%dm %.1fs', $m, $s) if ($m > 0);
+	return sprintf('%.1fs', $s);
 }
 
 =item C<__getExt($fn)>
@@ -183,6 +245,28 @@ sub __getExt {
 	my $ext = $arr[ scalar(@arr) - 1 ];
 	return '' if ($fn eq $ext);
 	return lc($ext);
+}
+
+sub __initStats {
+	my ($self) = @_;
+
+	$self->_stats({
+		total_files    => 0,
+		modified_files => 0,
+		skipped_files  => 0,
+		total_bytes    => 0,
+		modified_bytes => 0,
+		skipped_bytes  => 0,
+		tags_altered      => 0,
+		unqualified_bytes => 0,
+		unqualified_files => 0,
+		seen_files        => 0,
+		seen_bytes        => 0,
+		start_time        => time(),
+		end_time       => 0,
+	});
+
+	return;
 }
 
 =item C<__log($msg)>
@@ -219,7 +303,8 @@ changed).  Returns the number of fields that differ.
 sub __logTagChanges {
 	my ($self, $file, $pct, $existing, $artist, $album, $track, $year, $comment) = @_;
 
-	my (%JSON_changeLog, $plain_changeLog);
+	my %JSON_changeLog;
+	my $plain_changeLog = '';
 	my $changeCount = 0;
 
 	if ($self->json) {
@@ -232,8 +317,6 @@ sub __logTagChanges {
 			},
 			changes => [ ],
 		);
-	} else {
-		$plain_changeLog = sprintf('[%d%%]: ', $pct);
 	}
 
 	foreach my $f (
@@ -253,8 +336,10 @@ sub __logTagChanges {
 					old => $old,
 					new => $new,
 				});
+			} elsif ($old eq '') {
+				$plain_changeLog .= "${name}: \"${new}\", ";
 			} else {
-				$plain_changeLog .= "$name: \"$old\" -> \"$new\", ";
+				$plain_changeLog .= "${name}: \"${old}\" -> \"${new}\", ";
 			}
 		}
 	}
@@ -262,14 +347,53 @@ sub __logTagChanges {
 	if ($self->json) {
 		$JSON_changeLog{process}{message} = 'Tags unchanged, forced rewrite'
 		    if ($changeCount == 0);
+
 		$self->__log(\%JSON_changeLog);
 	} else {
-		$plain_changeLog = sprintf('[%d%%] Tags unchanged, forcing rewrite for %s', $pct, $file)
-		    if ($changeCount == 0);
-		$self->__log($plain_changeLog);
+		if ($changeCount == 0) {
+			$plain_changeLog = sprintf("%sTags unchanged, forcing rewrite for '%s'", $self->__marker($pct), $file)
+		} else {
+			$plain_changeLog = "Tags altered for '$file': ${plain_changeLog}";
+		}
+
+		$self->__log($self->__marker($pct) . $plain_changeLog);
 	}
 
 	return $changeCount;
+}
+
+=item C<__makeJobs()>
+
+Initializer for L</jobs>, if the user has not specified the number of concurrent jobs.
+Returns int.
+
+=cut
+
+sub __makeJobs {
+	my ($self) = @_;
+
+	my $count = Sys::CPU::cpu_count();
+	if ($count == 1) {
+		$self->__log($self->__marker(0) . 'not an SMP system');
+		return $count;
+	}
+
+	$self->__log(sprintf('%s%d cores detected, max jobs set to %d (use --jobs to override)',
+	    $self->__marker(0), $count, $count+1));
+
+	return ++$count;
+}
+
+=item C<__marker($pct)>
+
+Returns the C<[HH:MM:SS PCT%] > prefix string (including trailing space)
+used at the start of every plain-text log marker.
+
+=cut
+
+sub __marker {
+	my ($self, $pct) = @_;
+	return sprintf('[%s %6.2f%%] ', $self->__stamp(), $pct);
 }
 
 =item C<__normalizeArtist($artistRaw)>
@@ -357,7 +481,7 @@ C<ArtistHandle-YYYY-MM-DD.ext>
 
 =back
 
-Dies if none of the patterns match.
+Returns C<undef> if none of the patterns match.
 
 =cut
 
@@ -400,7 +524,7 @@ sub __parseFileName {
 		return $__filenameParserContext{$filename} = [ $artist, $album, $track, $year ];
 	}
 
-	die("Cannot parse filename structure: '$filename'");
+	return;
 }
 
 =item C<__printStats()>
@@ -427,7 +551,8 @@ sub __printStats {
 				skipped_files       => $s->{skipped_files} + 0,
 				total_bytes         => $s->{total_bytes} + 0,
 				modified_bytes      => $s->{modified_bytes} + 0,
-				change_count        => $s->{change_count} + 0,
+				skipped_bytes       => $s->{skipped_bytes} + 0,
+				tags_altered        => $s->{tags_altered} + 0,
 				unqualified_bytes   => $s->{unqualified_bytes} + 0,
 				unqualified_files   => $s->{unqualified_files} + 0,
 				seen_files          => $s->{seen_files} + 0,
@@ -448,15 +573,17 @@ sub __printStats {
 	$plain .= sprintf("  Files skipped:    %d\n",   $s->{skipped_files});
 	$plain .= sprintf("  Total bytes:      %s\n",   __fmtBytes($s->{total_bytes}));
 	$plain .= sprintf("  Modified bytes:   %s\n",   __fmtBytes($s->{modified_bytes}));
-	$plain .= sprintf("  Tag changes:      %d\n",   $s->{change_count});
+	$plain .= sprintf("  Skipped bytes:    %s\n",   __fmtBytes($s->{skipped_bytes}));
+	$plain .= sprintf("  Tags altered:     %d\n",   $s->{tags_altered});
 	$plain .= sprintf("  Unqualified files: %d\n",  $s->{unqualified_files});
 	$plain .= sprintf("  Unqualified bytes: %s\n",  __fmtBytes($s->{unqualified_bytes}));
-	$plain .= sprintf("  Total time:       %.3fs\n", $elapsed);
-	$plain .= sprintf("  Avg time/file:    %.3fs\n", $elapsed / $s->{total_files})
+	$plain .= sprintf("  Total time:       %s\n", __fmtDuration($elapsed));
+	$plain .= sprintf("  Avg time/file:    %s\n", __fmtDuration($elapsed / $s->{total_files}))
 	    if ($s->{total_files} > 0);
-	$plain .= sprintf("  Avg time/MiB:     %.3fs\n", $elapsed / $total_mib)
+	$plain .= sprintf("  Avg time/GiB:     %s\n", __fmtDuration($elapsed / ($total_mib / 1024)))
 	    if ($total_mib > 0);
-	$self->__log($plain);
+	$plain .= sprintf("  Concurrent jobs:  %d\n", $self->jobs);
+	$self->__log($self->__marker(100) . $plain);
 
 	return;
 }
@@ -488,8 +615,9 @@ sub __reapChild {
 				$self->_stats->{modified_bytes} += $entry->{size};
 			} else {
 				$self->_stats->{skipped_files}++;
+				$self->_stats->{skipped_bytes} += $entry->{size};
 			}
-			$self->_stats->{change_count} += $changeCount;
+			$self->_stats->{tags_altered} += $changeCount;
 		}
 	}
 
@@ -497,65 +625,91 @@ sub __reapChild {
 	return;
 }
 
-=item C<run($dirname)>
+=item C<run(@paths)>
 
-Public entry point.  Initializes stats, walks C<$dirname> via
-C<__collect>, dispatches each qualifying file to C<__tag>, waits for all
-child processes to finish, then prints the run summary.  Returns
-C<EXIT_SUCCESS> or C<EXIT_FAILURE>.
+Public entry point.  Initializes stats, then iterates over C<@paths>:
+plain files are examined directly; directories are walked via
+C<__collect> (recursing only when C<--recursive> is set).  Dispatches
+each qualifying file to C<__tag>, waits for all child processes to
+finish, then prints the run summary.  Returns C<EXIT_SUCCESS> or
+C<EXIT_FAILURE>.
 
 =cut
 
 sub run {
-	my ($self, $dirname) = @_;
+	my ($self, @paths) = @_;
 
 	$self->__originalProgramName($PROGRAM_NAME);
 	local $PROGRAM_NAME = sprintf('%s: main loop', $self->__originalProgramName);
 
-	$self->_stats({
-		total_files    => 0,
-		modified_files => 0,
-		skipped_files  => 0,
-		total_bytes    => 0,
-		modified_bytes => 0,
-		change_count      => 0,
-		unqualified_bytes => 0,
-		unqualified_files => 0,
-		seen_files        => 0,
-		seen_bytes        => 0,
-		start_time        => time(),
-		end_time       => 0,
-	});
+	$self->__initStats();
 
-	$self->__log("Walking file tree '$dirname'");
-	my $files = $self->__collect($dirname);
-	if (!ref($files) && $files == -1) {
-		return EXIT_FAILURE;
+	my @files;
+	for my $path (@paths) {
+		if (-f $path) {
+			my ($filename) = ($path =~ m{([^/]+)$});
+			my $ext = __getExt($filename);
+			my $size = -s $path;
+			$self->_stats->{seen_files}++;
+			$self->_stats->{seen_bytes} += $size;
+			if ($self->_tagWrap->isExtSupported($ext) && __acceptableFileName($filename) && __parseFileName($filename)) {
+				push(@files, [ $path, $filename, $size, $ext ]);
+			} else {
+				$self->_stats->{unqualified_bytes} += $size;
+				$self->_stats->{unqualified_files}++;
+			}
+		} elsif (-d $path) {
+			$self->__log($self->__marker(0) . "Walking '$path'");
+			my $sub = $self->__collect($path);
+			push(@files, @{$sub}) if ref($sub);
+		} else {
+			warn "No such file or directory: '$path'\n";
+		}
 	}
 
-	my $total = scalar(@$files);
+	my $total = scalar(@files);
 	if ($total == 0) {
-		$self->__log('Nothing to do!');
+		$self->__log($self->__marker(0) . 'Nothing to do!');
 		return EXIT_SUCCESS;
 	}
 
 	my $weighted = $ENV{EXPERIMENTAL_PROGRESS};
 	my ($totalBytes, $doneBytes);
 	if ($weighted) {
-		$totalBytes += $_->[2] for @$files;
+		$totalBytes += $_->[2] for @files;
 		$doneBytes = 0;
 	}
 
-	for (my $i = 0; $i < scalar(@$files); $i++) {
-		my ($relPath, $filename, $size, $ext) = @{ $files->[$i] };
+	for (my $i = 0; $i < scalar(@files); $i++) {
+		my ($relPath, $filename, $size, $ext) = @{ $files[$i] };
 		my $pct;
 		if ($weighted) {
 			$doneBytes += $size;
-			$pct = $totalBytes > 0 ? int($doneBytes / $totalBytes * 100) : 100;
+			$pct = $totalBytes > 0 ? $doneBytes / $totalBytes * 100 : 100;
 		} else {
-			$pct = $total > 0 ? int(($i + 1) / $total * 100) : 100;
+			$pct = $total > 0 ? ($i + 1) / $total * 100 : 100;
 		}
-		$self->__log("Tagging $relPath");
+		my $now = time();
+		my $elapsed = $now - $self->_stats->{start_time};
+		my $eta;
+		$eta = ($total - $i) * $elapsed / $i if ($i > 0 && $elapsed > 0);
+
+		if ($self->json) {
+			my %progress = (
+				process   => { type => 'progress', pct => $pct },
+				file      => $relPath,
+				elapsed_s => $elapsed + 0,
+			);
+			$progress{eta_s} = $eta + 0 if (defined($eta));
+			$self->__log(\%progress);
+		} else {
+			my $timing = '';
+			$timing = sprintf(', ETA: %s', __fmtDuration($eta))
+			    if (defined($eta));
+
+			$self->__log(sprintf("%sReading '%s'%s", $self->__marker($pct), $relPath, $timing));
+		}
+
 		$self->__tag(
 			$relPath,
 			$pct,
@@ -563,6 +717,7 @@ sub run {
 			$ext,
 			@{ __parseFileName($filename) },
 		);
+		sleep($self->delay) if ($self->delay > 0);
 	}
 
 	while (@pids) {
@@ -575,6 +730,22 @@ sub run {
 	$self->__printStats();
 
 	return EXIT_SUCCESS;
+}
+
+=item C<__stamp()>
+
+Returns the elapsed wall-clock time since C<start_time> formatted as
+C<HH:MM:SS> for use as the timestamp token in log markers.
+
+=cut
+
+sub __stamp {
+	my ($self) = @_;
+	my $elapsed = time() - $self->_stats->{start_time};
+	my $h = int($elapsed / 3600);
+	my $m = int(($elapsed - $h * 3600) / 60);
+	my $s = $elapsed - $h * 3600 - $m * 60;
+	return sprintf('%02d:%02d:%06.3f', $h, $m, $s);
 }
 
 =item C<__tag($file, $pct, $size, $ext, $artist, $album, $track, $year)>
@@ -618,9 +789,13 @@ sub __tag {
 
 =item C<__tagPerProcess($file, $ext, $pct, $artist, $album, $track, $year)>
 
-Runs inside a forked child.  Reads existing tags, skips the file if all
-fields are already up to date (unless C<--force>), otherwise deletes and
-rewrites tags via the appropriate backend and restores the original GID.
+Runs inside a forked child.  If any of C<--atime>, C<--ctime>, or C<--mtime> are set, the corresponding
+file timestamp is checked first: values up to one week (604800 s) are
+treated as a maximum file age in seconds; larger values are treated as an
+absolute Unix timestamp cutoff.  Files that are too recent are skipped
+with a log message regardless of C<--force>.  Otherwise reads existing tags, skips if all fields are already
+up to date (unless C<--force>), otherwise deletes and rewrites tags via
+the appropriate backend and restores the original GID.
 Returns a two-element list C<($modified, $changeCount)>.
 
 =cut
@@ -628,6 +803,19 @@ Returns a two-element list C<($modified, $changeCount)>.
 sub __tagPerProcess {
 	my ($self, $file, $ext, $pct, $artist, $album, $track, $year) = @_;
 	my $comment = "Generated by $URL";
+
+	my @file_stat;
+	for my $check (['atime', 8], ['mtime', 9], ['ctime', 10]) {
+		my ($name, $idx) = @{$check};
+		my $threshold = $self->$name();
+		next unless $threshold;
+		@file_stat = stat($file) unless @file_stat;
+		my $cutoff = $threshold > 604800 ? $threshold : int(time()) - $threshold;
+		if ($file_stat[$idx] >= $cutoff) {
+			$self->__log(sprintf("%s%s check: skipping '%s'", $self->__marker($pct), $name, $file));
+			return (0, 0);
+		}
+	}
 
 	if ($self->json) {
 		$self->__log({
@@ -645,8 +833,9 @@ sub __tagPerProcess {
 			},
 		});
 	} else {
-		$self->__log(sprintf('[%d%%] artist: %s, album: %s, track: %s, year: %s',
-		    $pct, $artist, $album, $track, $year));
+#		$self->__log(sprintf('%sartist: "%s", album: "%s", track: "%s", year: "%s"',
+#		    $self->__marker($pct), $artist, $album, $track, $year));
+#FIXME
 	}
 
 	local $PROGRAM_NAME = sprintf('%s: reading "%s"', $self->__originalProgramName, $file);
@@ -661,7 +850,7 @@ sub __tagPerProcess {
 	    && ($existing->{year}    // '') eq $year
 	    && ($existing->{comment} // '') eq $comment
 	) {
-		$self->__log(sprintf('[%d%%] Tags unchanged, skipping %s', $pct, $file));
+		$self->__log(sprintf("%sTags unchanged, skipping '%s'", $self->__marker($pct), $file));
 		return (0, 0);
 	}
 
@@ -696,8 +885,8 @@ Prints a usage summary to stdout and returns 1.
 
 sub usage {
 	printf("twitch-tag-media %s usage:\n", $VERSION);
-	print("twitch-tag-media --directory <DIR> [--force] [--help] [--jobs <N>] [--json] [--noop] [--random] [--recursive] [--verbose] [--version]\n");
-	print("twitch-tag-media -d <DIR> [-f] [-h] [-j <N>] [-J] [-n] [-R] [-r] [-v] [-V]\n\n");
+	print("twitch-tag-media [--atime <S>] [--ctime <S>] [--delay <S>] [--force] [--help] [--jobs <N>] [--json] [--mtime <S>] [--noop] [--random] [--recursive] [--verbose] [--version] PATH [PATH...]\n");
+	print("twitch-tag-media [-d <S>] [-f] [-h] [-j <N>] [-J] [-n] [-R] [-r] [-v] [-V] PATH [PATH...]\n\n");
 	printf("See https://%s for more information.\n", $URL);
 	return 1;
 }

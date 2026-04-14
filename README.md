@@ -36,21 +36,27 @@ Any feedback on this is welcome.  The author is happy to make reasonable adjustm
 ## Usage
 
 ```
-twitch-tag-media --directory <DIR> [--force] [--help] [--jobs <N>] [--json] [--noop] [--recursive] [--verbose] [--version]
-twitch-tag-media -d <DIR> [-f] [-h] [-j <N>] [-J] [-n] [-r] [-v] [-V]
+twitch-tag-media [--atime <S>] [--ctime <S>] [--force] [--help] [--jobs <N>] [--json] [--mtime <S>] [--noop] [--random] [--recursive] [--verbose] [--version] PATH [PATH...]
+twitch-tag-media [-f] [-h] [-j <N>] [-J] [-n] [-R] [-r] [-v] [-V] PATH [PATH...]
 ```
 
-Add MP3 ID3 tags to a file downloaded from Twitch using yt-dlp
+Add MP3/MP4 tags to media files downloaded from Twitch using yt-dlp.  Each
+`PATH` may be a file or a directory; directories are walked one level deep
+unless `--recursive` is also given.
 
 | Option | Short | Description |
 |--------|-------|-------------|
+| `--delay <S>` | `-d <S>` | Pause for S seconds between files (fractional, e.g. `0.001` for 1 ms) |
 | `--force` | `-f` | Rewrite tags even when already up to date |
 | `--help` | `-h` | Display this usage information and exit |
 | `--jobs <N>` | `-j <N>` | Allow parallel I/O (default 1) |
 | `--json` | `-J` | Emit newline-delimited JSON events instead of human-readable text (see below) |
+| `--atime <S>` | | Skip files whose atime is too recent (same threshold semantics as `--mtime`).  Not overridden by `--force` |
+| `--ctime <S>` | | Skip files whose ctime is too recent (same threshold semantics as `--mtime`).  Not overridden by `--force` |
+| `--mtime <S>` | | Skip files whose mtime is too recent: values ≤ 604800 are a maximum file age in seconds; larger values are an absolute Unix timestamp cutoff.  Not overridden by `--force` |
 | `--noop` | `-n` | Preview the tags which would be written without modifying any files |
 | `--recursive` | `-r` | Descend into subdirectories |
-| `--verbose` | `-v` | See verbose progress, tag information, and a run summary |
+| `--verbose` | `-v` | See verbose progress (with elapsed time and ETA), tag information, and a run summary |
 | `--version` | `-V` | Print the version number and exit |
 
 ## JSON output mode
@@ -62,6 +68,23 @@ wrapper that needs structured data rather than human-readable text.
 With `--json` and `--verbose` active together, twitch-tag-media writes one JSON object per line
 to stdout (newline-delimited JSON / JSON Lines format).  Each object has a `process` envelope
 and a type-specific payload.
+
+### Event: `progress`
+
+Emitted by the parent process once per file, just before the child is forked.  Reports the
+current percentage, elapsed wall-clock time, and (from the second file onwards) an estimated
+time to completion based on the file-dispatch rate.
+
+```json
+{
+  "process":   { "type": "progress", "pct": 42 },
+  "file":      "/media/streams/artist (live) 2024-06-01 20_30-123456789.mp3",
+  "elapsed_s": 5.2,
+  "eta_s":     7.1
+}
+```
+
+`eta_s` is absent on the first file because no rate data is available yet.
 
 ### Event: `tag`
 
@@ -114,7 +137,7 @@ Emitted once at the end of a run (requires `--verbose`).  Summarises the entire 
     "skipped_files":         4,
     "total_bytes":    1234567890,
     "modified_bytes": 1100000000,
-    "change_count":        190,
+    "tags_altered":        380,
     "elapsed_s":          45.3,
     "avg_time_per_file_s": 1.079,
     "avg_time_per_mib_s":  0.038
@@ -123,9 +146,9 @@ Emitted once at the end of a run (requires `--verbose`).  Summarises the entire 
 ```
 
 `skipped_files` counts files whose tags were already correct (no write needed).
-`change_count` is the total number of individual tag fields that differed from the existing
+`tags_altered` is the total number of individual tag fields that differed from the existing
 values across all modified files.  Under `--noop`, `modified_files` is always 0 but
-`change_count` still reflects what would have changed.
+`tags_altered` still reflects what would have changed.
 
 ## Experimental features
 
