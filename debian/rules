@@ -42,7 +42,12 @@ override_dh_auto_install:
 		cp -Rp "$$dir" debian/twitch-tag-media/usr/share/twitch-tag-media/perl5/; \
 		rm -rf "$$dir"; \
 	done
-	cp -Rp /usr/lib/${DEB_TARGET_MULTIARCH}/perl5/*/* debian/twitch-tag-media/usr/lib/twitch-tag-media/perl5/ 2>/dev/null || true
-	rsync -a --exclude='auto' /usr/share/perl5/ debian/twitch-tag-media/usr/share/twitch-tag-media/perl5/ 2>/dev/null || true
+	rsync -a --exclude='auto' /usr/lib/${DEB_TARGET_MULTIARCH}/perl5/*/ debian/twitch-tag-media/usr/share/twitch-tag-media/perl5/ 2>/dev/null || true
+	find /usr/lib/${DEB_TARGET_MULTIARCH}/perl5 -type f -path '*/auto/*' | while read f; do \
+		relpath="$${f#/usr/lib/${DEB_TARGET_MULTIARCH}/perl5/}"; \
+		destdir="debian/twitch-tag-media/usr/lib/twitch-tag-media/perl5/$$(dirname "$$relpath")"; \
+		mkdir -p "$$destdir"; \
+		cp -p "$$f" "$$destdir/"; \
+	done
 
 .PHONY: override_dh_auto_install
