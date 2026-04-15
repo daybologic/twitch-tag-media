@@ -51,7 +51,7 @@ use POSIX qw(EXIT_FAILURE EXIT_SUCCESS);
 
 if (-f "$FindBin::Bin/../lib/Daybo/Twitch/Retag.pm") {
 	use lib "$FindBin::Bin/../lib";
-} else {
+} elsif (-d '/usr/share/twitch-tag-media/perl5') {
 	use lib '/usr/share/twitch-tag-media/perl5';
 	use lib '/usr/lib/twitch-tag-media/perl5';
 }

@@ -35,10 +35,15 @@ export DH_VERBOSE=1
 	dh $@
 
 override_dh_auto_install:
-	dh_auto_install
+	dh_auto_install --destdir=debian/twitch-tag-media
+	mkdir -p debian/twitch-tag-media/usr/share/twitch-tag-media/perl5
+	mkdir -p debian/twitch-tag-media/usr/lib/twitch-tag-media/perl5
+	find debian/twitch-tag-media/usr/share/perl -name 'Daybo' -type d | while read dir; do \
+		cp -Rp "$$dir" debian/twitch-tag-media/usr/share/twitch-tag-media/perl5/; \
+		rm -rf "$$dir"; \
+	done
 	cp -Rp /usr/share/perl5/* debian/twitch-tag-media/usr/share/twitch-tag-media/perl5/ 2>/dev/null || true
 	find debian/twitch-tag-media/usr/share/twitch-tag-media/perl5 -type d -name auto -exec rm -rf {} + 2>/dev/null || true
-	mkdir -p debian/twitch-tag-media/usr/lib/twitch-tag-media/perl5
 	cp -Rp /usr/lib/${DEB_TARGET_MULTIARCH}/perl5/*/* debian/twitch-tag-media/usr/lib/twitch-tag-media/perl5/ 2>/dev/null || true
 	dh_perl
 
