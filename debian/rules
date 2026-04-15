@@ -51,7 +51,7 @@ override_dh_auto_install:
 		mv "$$f" "$$destdir/"; \
 	done
 	rm -rf debian/twitch-tag-media/usr/share/perl5/auto
-	for pkg in libipc-run3-perl libmoose-perl libreadonly-perl libsys-cpu-perl libuniversal-require-perl; do \
+	for pkg in $$(dpkg-query -W -f '$${Package}\n' 'lib*-perl' 2>/dev/null); do \
 		dpkg -L $$pkg 2>/dev/null | grep '\.pm$$' | grep -v '/auto/' | while read f; do \
 			relpath="$$(echo "$$f" | sed -E 's|.*/perl[^/]*/([0-9]+\.[0-9]+/)?||')"; \
 			destdir="debian/twitch-tag-media/usr/share/twitch-tag-media/perl5/$$(dirname "$$relpath")"; \
