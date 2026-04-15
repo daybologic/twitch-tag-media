@@ -45,16 +45,21 @@ override_dh_auto_install:
 		mv "$$f" debian/twitch-tag-media/usr/share/twitch-tag-media/perl5/; \
 	done
 	find debian/twitch-tag-media/usr/share/perl5/auto -type f \( -name '*.so' -o -name '*.bs' \) 2>/dev/null | while read f; do \
-		relpath="$$(echo "$$f" | sed 's|.*perl5/||')"; \
+		relpath="$$(echo "$$f" | sed -E 's|.*/perl[^/]*/([0-9]+\.[0-9]+/)?||')"; \
 		destdir="debian/twitch-tag-media/usr/lib/twitch-tag-media/perl5/$$(dirname "$$relpath")"; \
 		mkdir -p "$$destdir"; \
 		mv "$$f" "$$destdir/"; \
 	done
 	rm -rf debian/twitch-tag-media/usr/share/perl5/auto
-	dpkg -l libipc-run3-perl libmoose-perl libreadonly-perl libsys-cpu-perl libuniversal-require-perl 2>/dev/null | grep '^ii' | awk '{print $$2}' | while read pkg; do \
-		dpkg -L $$pkg 2>/dev/null | grep '\.pm$$' | grep -v '/auto/' | xargs -r -I {} cp -p {} debian/twitch-tag-media/usr/share/twitch-tag-media/perl5/; \
+	for pkg in libipc-run3-perl libmoose-perl libreadonly-perl libsys-cpu-perl libuniversal-require-perl; do \
+		dpkg -L $$pkg 2>/dev/null | grep '\.pm$$' | grep -v '/auto/' | while read f; do \
+			relpath="$$(echo "$$f" | sed -E 's|.*/perl[^/]*/([0-9]+\.[0-9]+/)?||')"; \
+			destdir="debian/twitch-tag-media/usr/share/twitch-tag-media/perl5/$$(dirname "$$relpath")"; \
+			mkdir -p "$$destdir"; \
+			cp -p "$$f" "$$destdir/"; \
+		done; \
 		dpkg -L $$pkg 2>/dev/null | grep -E '/auto/.*\.(so|bs)$$' | while read f; do \
-			relpath="$$(echo "$$f" | sed 's|.*/perl[^/]*/||')"; \
+			relpath="$$(echo "$$f" | sed -E 's|.*/perl[^/]*/([0-9]+\.[0-9]+/)?||')"; \
 			destdir="debian/twitch-tag-media/usr/lib/twitch-tag-media/perl5/$$(dirname "$$relpath")"; \
 			mkdir -p "$$destdir"; \
 			cp -p "$$f" "$$destdir/"; \
