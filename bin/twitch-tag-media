@@ -45,11 +45,12 @@ use strict;
 use warnings;
 
 use Daybo::Twitch::Retag;
+use FindBin;
 use Getopt::Long qw(:config no_ignore_case);
 use POSIX qw(EXIT_FAILURE EXIT_SUCCESS);
 
-if (-f 'lib/Daybo/Twitch/Retag.pm') {
-	use lib 'lib';
+if (-f "$FindBin::Bin/../lib/Daybo/Twitch/Retag.pm") {
+	use lib "$FindBin::Bin/../lib";
 } else {
 	use lib '/usr/share/twitch-tag-media/perl5';
 }
