@@ -63,6 +63,7 @@ has __originalProgramName => (is => 'rw', isa => 'Str');
 has _tagWrap => (is => 'ro', isa => 'Daybo::Twitch::TagWrap', default => sub { Daybo::Twitch::TagWrap->new() });
 
 my @pids;
+my $__interrupted = 0;
 
 =item C<BUILD()>
 
@@ -245,6 +246,31 @@ sub __getExt {
 	my $ext = $arr[ scalar(@arr) - 1 ];
 	return '' if ($fn eq $ext);
 	return lc($ext);
+}
+
+=item C<__handleSignal($sig)>
+
+Increments C<$__interrupted>.  On the first call, logs that active
+children will be allowed to finish their current retag before stopping,
+but does B<not> forward the signal.  On the second and subsequent calls,
+logs and forwards C<$sig> to each child immediately.
+No return value.
+
+=cut
+
+sub __handleSignal {
+	my ($sig) = @_;
+	++$__interrupted;
+	my $count = scalar(@pids);
+	if ($__interrupted == 1) {
+		warn sprintf("Caught SIG%s; %d child%s will finish current retag before stopping...\n",
+		    $sig, $count, $count == 1 ? '' : 'ren');
+	} else {
+		warn sprintf("Caught SIG%s again; terminating %d child%s immediately...\n",
+		    $sig, $count, $count == 1 ? '' : 'ren');
+		kill($sig, $_->{pid}) for @pids;
+	}
+	return;
 }
 
 sub __initStats {
@@ -588,16 +614,17 @@ sub __printStats {
 	return;
 }
 
-=item C<__reapChild($done_pid)>
+=item C<__reapChild($done_pid, $pct)>
 
 Reads the result line written by a finished child process, updates
-C<_stats> with its file and byte totals, then removes its entry from
-C<@pids>.  No return value.
+C<_stats> with its file and byte totals, logs the outcome, then removes
+its entry from C<@pids>.  C<$pct> is used for the log marker.
+No return value.
 
 =cut
 
 sub __reapChild {
-	my ($self, $done_pid) = @_;
+	my ($self, $done_pid, $pct) = @_;
 
 	my ($entry) = grep { $_->{pid} == $done_pid } @pids;
 	if ($entry) {
@@ -618,6 +645,15 @@ sub __reapChild {
 				$self->_stats->{skipped_bytes} += $entry->{size};
 			}
 			$self->_stats->{tags_altered} += $changeCount;
+			$self->__log($self->__marker($pct) . sprintf(
+			    'PID %d reaped (modified=%d, tags altered=%d, %d still running)',
+			    $done_pid, $modified, $changeCount, scalar(@pids) - 1,
+			));
+		} else {
+			$self->__log($self->__marker($pct) . sprintf(
+			    'PID %d reaped (no result; likely interrupted)',
+			    $done_pid,
+			));
 		}
 	}
 
@@ -641,6 +677,9 @@ sub run {
 
 	$self->__originalProgramName($PROGRAM_NAME);
 	local $PROGRAM_NAME = sprintf('%s: main loop', $self->__originalProgramName);
+	local $SIG{INT}  = \&__handleSignal;
+	local $SIG{TERM} = \&__handleSignal;
+	$__interrupted = 0;
 
 	$self->__initStats();
 
@@ -680,7 +719,7 @@ sub run {
 		$doneBytes = 0;
 	}
 
-	for (my $i = 0; $i < scalar(@files); $i++) {
+	for (my $i = 0; $i < scalar(@files) && !$__interrupted; $i++) {
 		my ($relPath, $filename, $size, $ext) = @{ $files[$i] };
 		my $pct;
 		if ($weighted) {
@@ -720,10 +759,22 @@ sub run {
 		sleep($self->delay) if ($self->delay > 0);
 	}
 
+	if ($__interrupted && @pids) {
+		$self->__log($self->__marker(100) . sprintf(
+		    'Interrupted; waiting for %d child%s to finish...',
+		    scalar(@pids), scalar(@pids) == 1 ? '' : 'ren',
+		));
+	}
+
 	while (@pids) {
-		local $PROGRAM_NAME = sprintf('%s: no more files, waitpid', $self->__originalProgramName);
+		local $PROGRAM_NAME = sprintf('%s: %s, waitpid (%d remaining)',
+		    $self->__originalProgramName,
+		    $__interrupted ? 'interrupted' : 'no more files',
+		    scalar(@pids),
+		);
 		my $done = waitpid(-1, 0);
-		$self->__reapChild($done);
+		next if ($done <= 0);
+		$self->__reapChild($done, 100);
 	}
 
 	$self->_stats->{end_time} = time();
@@ -763,7 +814,7 @@ sub __tag {
 	if (scalar(@pids) >= $self->jobs) {
 		local $PROGRAM_NAME = sprintf('%s: reached %d concurrent jobs, waitpid', $self->__originalProgramName, $self->jobs);
 		my $done = waitpid(-1, 0);
-		$self->__reapChild($done);
+		$self->__reapChild($done, $pct) if ($done > 0);
 	}
 
 	pipe(my $rfh, my $wfh) or die("Cannot create pipe: $ERRNO");
@@ -775,6 +826,8 @@ sub __tag {
 		close($wfh);
 		push(@pids, { pid => $pid, rfh => $rfh, size => $size });
 	} else { # child
+		local $SIG{INT}  = 'DEFAULT';
+		local $SIG{TERM} = 'DEFAULT';
 		close($rfh);
 		my ($modified, $changeCount) = $self->__tagPerProcess($file, $ext, $pct, $artist, $album, $track, $year);
 		$modified //= 0;
