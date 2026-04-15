@@ -37,24 +37,11 @@ export DH_VERBOSE=1
 override_dh_auto_install:
 	dh_auto_install --destdir=debian/twitch-tag-media
 	mkdir -p debian/twitch-tag-media/usr/share/twitch-tag-media/perl5
-	mkdir -p debian/twitch-tag-media/usr/lib/twitch-tag-media/perl5
-	find debian/twitch-tag-media/usr/share/perl5 -maxdepth 1 -mindepth 1 -not -name 'auto' -type d | while read dir; do \
+	find debian/twitch-tag-media/usr/share/perl5 -maxdepth 1 -mindepth 1 -type d | while read dir; do \
 		mv "$$dir" debian/twitch-tag-media/usr/share/twitch-tag-media/perl5/; \
 	done
 	find debian/twitch-tag-media/usr/share/perl5 -maxdepth 1 -mindepth 1 -name '*.pm' -type f | while read f; do \
 		mv "$$f" debian/twitch-tag-media/usr/share/twitch-tag-media/perl5/; \
-	done
-	find /usr/lib/${DEB_TARGET_MULTIARCH}/perl5 -maxdepth 1 -mindepth 1 -not -name 'auto' -type d | while read dir; do \
-		cp -Rp "$$dir" debian/twitch-tag-media/usr/share/twitch-tag-media/perl5/; \
-	done
-	find /usr/lib/${DEB_TARGET_MULTIARCH}/perl5 -maxdepth 1 -mindepth 1 -name '*.pm' -type f | while read f; do \
-		cp -p "$$f" debian/twitch-tag-media/usr/share/twitch-tag-media/perl5/; \
-	done
-	find /usr/lib/${DEB_TARGET_MULTIARCH}/perl5 -path '*/auto/*' -type f | while read f; do \
-		relpath="$${f#/usr/lib/${DEB_TARGET_MULTIARCH}/perl5/}"; \
-		destdir="debian/twitch-tag-media/usr/lib/twitch-tag-media/perl5/$$(dirname "$$relpath")"; \
-		mkdir -p "$$destdir"; \
-		cp -p "$$f" "$$destdir/"; \
 	done
 
 .PHONY: override_dh_auto_install
