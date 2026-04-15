@@ -45,7 +45,7 @@ WriteMakefile(
 
 	EXE_FILES => [glob q('bin/*')],
 	INSTALLVENDORLIB => '/usr/share/twitch-tag-media/perl5',
-	INSTALLVENDORARCH => '/usr/share/twitch-tag-media/perl5',
+	INSTALLVENDORARCH => '/usr/lib/twitch-tag-media/perl5',
 	NAME => 'Daybo::Twitch::Retag',
 
         PREREQ_PM => {

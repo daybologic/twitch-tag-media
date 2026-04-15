@@ -16,7 +16,7 @@ Rules-Requires-Root: no
 Homepage: https://git.sr.ht/~m6kvm/twitch-tag-media
 
 Package: twitch-tag-media
-Architecture: all
+Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends},
  ffmpeg,
  id3v2,
