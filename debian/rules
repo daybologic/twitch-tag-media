@@ -33,3 +33,11 @@ export DH_VERBOSE=1
 
 %:
 	dh $@
+
+override_dh_install:
+	install -dm 755 debian/twitch-tag-media/usr/share/twitch-tag-media
+	cp -Rp /usr/share/perl5 debian/twitch-tag-media/usr/share/twitch-tag-media
+	cp -Rp /usr/lib/${DEB_TARGET_MULTIARCH}/perl5/*/. debian/twitch-tag-media/usr/share/twitch-tag-media/perl5
+	dh_install
+
+.PHONY: override_dh_install

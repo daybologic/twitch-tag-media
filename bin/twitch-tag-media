@@ -47,7 +47,12 @@ use warnings;
 use Daybo::Twitch::Retag;
 use Getopt::Long qw(:config no_ignore_case);
 use POSIX qw(EXIT_FAILURE EXIT_SUCCESS);
-use lib './lib';
+
+if (-f 'lib/Daybo/Twitch/Retag.pm') {
+	use lib 'lib';
+} else {
+	use lib '/usr/share/twitch-tag-media/perl5';
+}
 
 =item C<main()>
 

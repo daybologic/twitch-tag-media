@@ -40,11 +40,12 @@ eval {
 use ExtUtils::MakeMaker;
 
 WriteMakefile(
-	ABSTRACT     => 'Perl program for tagging Twitch media files downloaded with yt-dlp',
-	AUTHOR       => 'Rev. Duncan Ross Palmer, 2E0EOL (2e0eol@gmail.com)',
+	ABSTRACT => 'Perl program for tagging Twitch media files downloaded with yt-dlp',
+	AUTHOR => 'Rev. Duncan Ross Palmer, 2E0EOL (2e0eol@gmail.com)',
 
-	EXE_FILES    => [glob q('bin/*')],
-	NAME         => 'Daybo::Twitch::Retag',
+	EXE_FILES => [glob q('bin/*')],
+	INSTALLVENDORSCRIPT => '/usr/share/twitch-tag-media',
+	NAME => 'Daybo::Twitch::Retag',
 
         PREREQ_PM => {
                 'IPC::Run3'          => 0,
