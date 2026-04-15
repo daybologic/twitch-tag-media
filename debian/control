@@ -2,13 +2,13 @@ Source: twitch-tag-media
 Section: sound
 Priority: optional
 Maintainer: Rev. Duncan Ross Palmer <2e0eol@gmail.com>
-Build-Depends: debhelper-compat (= 13)
-Build-Depends-Indep: libsys-cpu-perl,
+Build-Depends: debhelper-compat (= 13),
  id3v2,
  lame,
  libipc-run3-perl,
  libmoose-perl,
  libreadonly-perl,
+ libsys-cpu-perl,
  libuniversal-require-perl,
  sox
 Standards-Version: 4.7.2
@@ -17,7 +17,7 @@ Homepage: https://git.sr.ht/~m6kvm/twitch-tag-media
 
 Package: twitch-tag-media
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends},
+Depends: ${perl:Depends}, ${shlibs:Depends}, ${misc:Depends},
  ffmpeg,
  id3v2,
  mkvtoolnix

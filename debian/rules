@@ -40,5 +40,6 @@ override_dh_auto_install:
 	find debian/twitch-tag-media/usr/share/twitch-tag-media/perl5 -type d -name auto -exec rm -rf {} + 2>/dev/null || true
 	mkdir -p debian/twitch-tag-media/usr/lib/twitch-tag-media/perl5
 	cp -Rp /usr/lib/${DEB_TARGET_MULTIARCH}/perl5/*/* debian/twitch-tag-media/usr/lib/twitch-tag-media/perl5/ 2>/dev/null || true
+	dh_perl
 
 .PHONY: override_dh_auto_install
