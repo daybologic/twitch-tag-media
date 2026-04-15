@@ -44,7 +44,6 @@ WriteMakefile(
 	AUTHOR => 'Rev. Duncan Ross Palmer, 2E0EOL (2e0eol@gmail.com)',
 
 	EXE_FILES => [glob q('bin/*')],
-	INSTALLVENDORSCRIPT => '/usr/share/twitch-tag-media',
 	NAME => 'Daybo::Twitch::Retag',
 
         PREREQ_PM => {
