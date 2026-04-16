@@ -75,7 +75,7 @@ sub test {
 	return EXIT_SUCCESS;
 }
 
-package main;
+package main; ## no critic (Modules::ProhibitMultiplePackages)
 use strict;
 use warnings;
 exit(MP3_deleteTags_Tests->new->run);

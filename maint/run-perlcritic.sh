@@ -36,3 +36,4 @@ repoRoot=$(CDPATH= cd -- "$scriptDir/.." && pwd)
 
 find "${repoRoot}/bin/" -type f -exec "${scriptDir}/perlcritic.sh" {} +
 find "${repoRoot}/lib/" -name "*.pm" -type f -exec "${scriptDir}/perlcritic.sh" {} +
+find "${repoRoot}/t/" -name "*.t" -type f -exec "${scriptDir}/perlcritic.sh" {} +
