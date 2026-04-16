@@ -37,7 +37,11 @@
 
 set -eu
 
-STAGING=debian/twitch-tag-media
+# TTM_PACKAGE is passed explicitly from debian/rules (via DEB_SOURCE from
+# /usr/share/dpkg/pkg-info.mk).  Fall back to parsing debian/control so the
+# script remains runnable outside a real dpkg-buildpackage invocation.
+PACKAGE="${TTM_PACKAGE:-$(grep -m1 '^Package:' debian/control | awk '{print $2}')}"
+STAGING="debian/$PACKAGE"
 
 mkdir -p "$STAGING/usr/share/twitch-tag-media/perl5"
 mkdir -p "$STAGING/usr/lib/twitch-tag-media/perl5"
