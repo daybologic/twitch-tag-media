@@ -44,10 +44,18 @@ package main;
 use strict;
 use warnings;
 
+use FindBin;
+
+if (-f "$FindBin::Bin/../lib/Daybo/Twitch/Retag.pm") {
+	use lib "$FindBin::Bin/../lib";
+} elsif (-d '/usr/share/twitch-tag-media/perl5') {
+	use lib '/usr/share/twitch-tag-media/perl5';
+	use lib '/usr/lib/twitch-tag-media/perl5';
+}
+
 use Daybo::Twitch::Retag;
 use Getopt::Long qw(:config no_ignore_case);
 use POSIX qw(EXIT_FAILURE EXIT_SUCCESS);
-use lib './lib';
 
 =item C<main()>
 

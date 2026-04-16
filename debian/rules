@@ -29,7 +29,15 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
+include /usr/share/dpkg/pkg-info.mk
+
 export DH_VERBOSE=1
 
 %:
 	dh $@
+
+override_dh_auto_install:
+	dh_auto_install --destdir=debian/$(DEB_SOURCE)
+	TTM_PACKAGE=$(DEB_SOURCE) maint/debian-runtime-packaging.sh
+
+.PHONY: override_dh_auto_install
