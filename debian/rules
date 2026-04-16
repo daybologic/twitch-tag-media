@@ -36,34 +36,6 @@ export DH_VERBOSE=1
 
 override_dh_auto_install:
 	dh_auto_install --destdir=debian/twitch-tag-media
-	mkdir -p debian/twitch-tag-media/usr/share/twitch-tag-media/perl5
-	mkdir -p debian/twitch-tag-media/usr/lib/twitch-tag-media/perl5
-	find debian/twitch-tag-media/usr/share/perl5 -maxdepth 1 -mindepth 1 -not -name 'auto' -type d | while read dir; do \
-		mv "$$dir" debian/twitch-tag-media/usr/share/twitch-tag-media/perl5/; \
-	done
-	find debian/twitch-tag-media/usr/share/perl5 -maxdepth 1 -mindepth 1 -name '*.pm' -type f | while read f; do \
-		mv "$$f" debian/twitch-tag-media/usr/share/twitch-tag-media/perl5/; \
-	done
-	find debian/twitch-tag-media/usr/share/perl5/auto -type f \( -name '*.so' -o -name '*.bs' \) 2>/dev/null | while read f; do \
-		relpath="$$(echo "$$f" | sed -E 's|.*/perl[^/]*/([0-9]+\.[0-9]+/)?||')"; \
-		destdir="debian/twitch-tag-media/usr/lib/twitch-tag-media/perl5/$$(dirname "$$relpath")"; \
-		mkdir -p "$$destdir"; \
-		mv "$$f" "$$destdir/"; \
-	done
-	rm -rf debian/twitch-tag-media/usr/share/perl5/auto
-	for pkg in $$(dpkg-query -W -f '$${Package}\n' 'lib*-perl' 2>/dev/null); do \
-		dpkg -L $$pkg 2>/dev/null | grep '\.pm$$' | grep -v '/auto/' | while read f; do \
-			relpath="$$(echo "$$f" | sed -E 's|.*/perl[^/]*/([0-9]+\.[0-9]+/)?||')"; \
-			destdir="debian/twitch-tag-media/usr/share/twitch-tag-media/perl5/$$(dirname "$$relpath")"; \
-			mkdir -p "$$destdir"; \
-			cp -p "$$f" "$$destdir/"; \
-		done; \
-		dpkg -L $$pkg 2>/dev/null | grep -E '/auto/.*\.(so|bs)$$' | while read f; do \
-			relpath="$$(echo "$$f" | sed -E 's|.*/perl[^/]*/([0-9]+\.[0-9]+/)?||')"; \
-			destdir="debian/twitch-tag-media/usr/lib/twitch-tag-media/perl5/$$(dirname "$$relpath")"; \
-			mkdir -p "$$destdir"; \
-			cp -p "$$f" "$$destdir/"; \
-		done; \
-	done
+	maint/debian-runtime-packaging.sh
 
 .PHONY: override_dh_auto_install
