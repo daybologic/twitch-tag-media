@@ -68,7 +68,7 @@ comment
 
 =cut
 
-sub _readTagLines {
+sub __readTagLines {
 	my ($self, $file) = @_;
 	my $fh = $self->_openPipe('id3v2', '-l', $file);
 	return unless defined($fh);
@@ -80,7 +80,7 @@ sub _readTagLines {
 sub readTags {
 	my ($self, $file) = @_;
 
-	my $lines = $self->_readTagLines($file);
+	my $lines = $self->__readTagLines($file);
 	return unless defined($lines);
 
 	my %tags;

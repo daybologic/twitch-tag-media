@@ -68,7 +68,7 @@ sub testFailure {
 	my ($mockPackage, $mockMethod) = ('Daybo::Twitch::TagWrap::Backend', '_openPipe');
 	$self->mock($mockPackage, $mockMethod, sub { return undef });
 
-	my $result = $self->sut->_readTagLines($file);
+	my $result = $self->sut->__readTagLines($file);
 	is($result, undef, 'undef returned when _openPipe fails');
 
 	my $mockCalls = $self->mockCallsWithObject($mockPackage, $mockMethod);
@@ -97,7 +97,7 @@ sub testSuccess {
 	my ($mockPackage, $mockMethod) = ('Daybo::Twitch::TagWrap::Backend', '_openPipe');
 	$self->mock($mockPackage, $mockMethod, sub { return $fake_fh });
 
-	my $result = $self->sut->_readTagLines($file);
+	my $result = $self->sut->__readTagLines($file);
 	cmp_deeply($result, [ $line1, $line2 ], 'lines returned from pipe') or diag(explain($result));
 
 	my $mockCalls = $self->mockCallsWithObject($mockPackage, $mockMethod);

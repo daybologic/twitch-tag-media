@@ -57,11 +57,11 @@ sub testFailure {
 	my ($self) = @_;
 	plan tests => 1;
 
-	my ($mockPackage, $mockMethod) = ('Daybo::Twitch::TagWrap::Backend::MP3', '_readTagLines');
+	my ($mockPackage, $mockMethod) = ('Daybo::Twitch::TagWrap::Backend::MP3', '__readTagLines');
 	$self->mock($mockPackage, $mockMethod, sub { return undef });
 
 	my $result = $self->sut->readTags($self->uniqueStr());
-	is($result, undef, 'undef returned when _readTagLines fails');
+	is($result, undef, 'undef returned when __readTagLines fails');
 
 	return EXIT_SUCCESS;
 }
@@ -70,7 +70,7 @@ sub testNoTags {
 	my ($self) = @_;
 	plan tests => 1;
 
-	my ($mockPackage, $mockMethod) = ('Daybo::Twitch::TagWrap::Backend::MP3', '_readTagLines');
+	my ($mockPackage, $mockMethod) = ('Daybo::Twitch::TagWrap::Backend::MP3', '__readTagLines');
 	$self->mock($mockPackage, $mockMethod, sub { return [] });
 
 	my $result = $self->sut->readTags($self->uniqueStr());
@@ -89,7 +89,7 @@ sub testSuccess {
 	my $year    = $self->unique();
 	my $comment = $self->uniqueStr();
 
-	my ($mockPackage, $mockMethod) = ('Daybo::Twitch::TagWrap::Backend::MP3', '_readTagLines');
+	my ($mockPackage, $mockMethod) = ('Daybo::Twitch::TagWrap::Backend::MP3', '__readTagLines');
 	$self->mock($mockPackage, $mockMethod, sub { return [
 		"TPE1 (TPE1): $artist\n",
 		"TALB (TALB): $album\n",
