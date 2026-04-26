@@ -77,11 +77,15 @@ External calls (e.g. `_system` on the backend base class) are mocked via `$self-
 
 **Test data:**
 
-Use `$self->uniqueStr()` to generate unique, predictable alphanumeric strings for filenames and other inputs. Do not hardcode values where `uniqueStr` can be used instead.
+Use `$self->uniqueStr()` to generate unique, predictable alphanumeric strings for filenames and other inputs. Do not hardcode values where `uniqueStr` can be used instead.  If the unique value must be an integer, use `$self->unique()` instead.
 
 **Philosophy:**
 
-Tests are unit-level: each file covers one method of one class. External processes (`id3v2`, `ffmpeg`, `mkvpropedit`) are never actually invoked — they are always mocked at the `_system` boundary. The test name mirrors the file being tested: `MP3_deleteTags.t` tests `Backend::MP3::deleteTags`.
+Tests are unit-level: each file covers one method of one class. External processes (`id3v2`, `ffmpeg`, `mkvpropedit`) are never actually invoked — they are always mocked at the `_system` boundary. The test name mirrors the file being tested: `MP3_deleteTags.t` tests `Backend::MP3::deleteTags`.  If the method name is prefixed with any number of underscores (underbars), that is *not* reflected in the name within the filename for the test suite.
+
+Our ultimate aim is to reach unit test code-coverage of 100% of all possible code paths -- one step at a time.
+Test names are typically `sub testSuccess` for a successful case and `sub testFailure` for an error condition.
+There may be multiple success cases and multiple failure conditions which need to be tested per-method.
 
 ## Filename Convention
 
