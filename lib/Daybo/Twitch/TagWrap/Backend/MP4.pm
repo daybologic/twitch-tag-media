@@ -83,7 +83,7 @@ sub readTags {
 		$tags->{track} = delete($tags->{title});
 	}
 
-	return ($tags && scalar(keys(%$tags)) > 0) ? $tags : undef;
+	return scalar(keys(%$tags)) > 0 ? $tags : undef;
 }
 
 =item C<deleteTags($file)>
