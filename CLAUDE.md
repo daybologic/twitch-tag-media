@@ -59,6 +59,11 @@ A pre-commit hook (`maint/trap-goose-corruption.sh`, configured in `.pre-commit-
 
 After any modification, run `git diff` and confirm only the intended lines changed. Do not commit automatically unless explicitly instructed.
 
+## Commit Emoji Conventions
+
+Follow Gitmoji (https://gitmoji.dev) for commit message prefixes. Notable conventions used in this project:
+- ⚰️ — removing dead code
+
 ## Unit Tests (`t/*.t`)
 
 Unit tests use `Test::Module::Runnable` (vendored under `externals/libtest-module-runnable-perl/`), a Moose-based framework that auto-discovers and runs all methods whose names match `^test`.
