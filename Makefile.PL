@@ -64,7 +64,8 @@ use strict;
 use warnings;
 
 sub test {
-	my $inherited = shift;
+	my ($self) = @_;
+	my $inherited = $self->SUPER::test(@_);
 
 	my $njobs;
 	eval {
