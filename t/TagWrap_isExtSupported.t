@@ -64,6 +64,19 @@ sub testFailure {
 	return EXIT_SUCCESS;
 }
 
+sub testFailureExtNotFound {
+	my ($self) = @_;
+	plan tests => 1;
+
+	my ($ext, $other) = ($self->uniqueStr(), $self->uniqueStr());
+
+	$self->mock('Daybo::Twitch::TagWrap::Backend', 'list', sub { return [uc($other)] });
+
+	ok(!$self->sut->isExtSupported($ext), 'returns false when list is non-empty but extension absent');
+
+	return EXIT_SUCCESS;
+}
+
 sub testSuccess {
 	my ($self) = @_;
 	plan tests => 1;
