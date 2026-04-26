@@ -52,12 +52,6 @@ sub setUp {
 	return EXIT_SUCCESS;
 }
 
-sub tearDown {
-	my ($self) = @_;
-	$self->clearMocks();
-	return EXIT_SUCCESS;
-}
-
 sub testEmpty {
 	my ($self) = @_;
 	plan tests => 1;
