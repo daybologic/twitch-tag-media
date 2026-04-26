@@ -90,6 +90,28 @@ sub deleteTags {
 	# no-op
 }
 
+=item C<__parseTagXml($xml)>
+
+Parses the Matroska XML string returned by C<mkvextract>, extracts
+recognised tag fields via C<%__reverseTagMap>, and unescapes values via
+L</__xmlUnescape>.  Returns a hash ref of the fields found, or C<undef>
+if none are recognised.
+
+=cut
+
+sub __parseTagXml {
+	my ($xml) = @_;
+
+	my %tags;
+	while ($xml =~ m{<Simple>\s*<Name>([^<]+)</Name>\s*<String>([^<]*)</String>.*?</Simple>}gs) {
+		my ($name, $value) = ($1, $2);
+		my $field = $__reverseTagMap{$name};
+		$tags{$field} = __xmlUnescape($value) if (defined($field));
+	}
+
+	return %tags ? \%tags : undef;
+}
+
 =item C<readTags($file)>
 
 Runs C<mkvextract tags FILE> and parses the Matroska XML output to
@@ -100,22 +122,27 @@ Returns a hash ref of the fields found, or C<undef> if none are present.
 
 sub readTags {
 	my ($self, $file) = @_;
+	my $xml = $self->__readTagXml($file);
+	return unless defined($xml);
+	return __parseTagXml($xml);
+}
 
-	open(my $fh, '-|', 'mkvextract', 'tags', $file) or return;
+=item C<__readTagXml($file)>
+
+Runs C<mkvextract tags FILE> via L<Daybo::Twitch::TagWrap::Backend/_openPipe>
+and returns the raw XML output as a string, or C<undef> if the pipe
+could not be opened.
+
+=cut
+
+sub __readTagXml {
+	my ($self, $file) = @_;
+	my $fh = $self->_openPipe('mkvextract', 'tags', $file);
+	return unless defined($fh);
 	local $INPUT_RECORD_SEPARATOR = undef;
 	my $xml = <$fh>;
 	close($fh);
-
-	return unless defined($xml);
-
-	my %tags;
-	while ($xml =~ m{<Simple>\s*<Name>([^<]+)</Name>\s*<String>([^<]*)</String>.*?</Simple>}gs) {
-		my ($name, $value) = ($1, $2);
-		my $field = $__reverseTagMap{$name};
-		$tags{$field} = __xmlUnescape($value) if (defined($field));
-	}
-
-	return %tags ? \%tags : undef;
+	return $xml;
 }
 
 =item C<writeTags($file, $artist, $album, $track, $year, $comment)>
