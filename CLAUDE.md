@@ -48,6 +48,8 @@ Calls to subroutines must always include parentheses, so they are visually disti
 
 Every subroutine must have a Pod documentation block immediately preceding it (between the previous `=cut` and the `sub` keyword). This applies to all methods, public and private alike.
 
+Always `use English qw(-no_match_vars)` and refer to special variables by their English names (e.g. `$EVAL_ERROR` not `$@`, `$ERRNO` not `$!`, `$CHILD_ERROR` not `$?`).
+
 ## Code Quality Rules
 
 A pre-commit hook (`maint/trap-goose-corruption.sh`, configured in `.pre-commit-config.yaml`) rejects commits if `lib/` contains:
