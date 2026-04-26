@@ -29,6 +29,22 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
+package FailOnCloseHandle;
+
+sub TIEHANDLE {
+	my ($class, $content) = @_;
+	return bless { content => $content }, $class;
+}
+
+sub READLINE {
+	my ($self) = @_;
+	return $self->{content};
+}
+
+sub CLOSE {
+	return 0;
+}
+
 package MP4_readTagJson_Tests;
 use strict;
 use warnings;
@@ -56,6 +72,28 @@ sub setUp {
 sub tearDown {
 	my ($self) = @_;
 	$self->clearMocks();
+	return EXIT_SUCCESS;
+}
+
+sub testCloseFailure {
+	my ($self) = @_;
+	plan tests => 1;
+
+	my $file    = $self->uniqueStr();
+	my $content = $self->uniqueStr();
+
+	local *FailFH;
+	tie *FailFH, 'FailOnCloseHandle', $content;
+
+	my ($mockPackage, $mockMethod) = ('Daybo::Twitch::TagWrap::Backend', '_openPipe');
+	$self->mock($mockPackage, $mockMethod, sub { return \*FailFH });
+
+	throws_ok(
+		sub { $self->sut->__readTagJson($file) },
+		qr/close failed/,
+		'dies when close fails',
+	);
+
 	return EXIT_SUCCESS;
 }
 
