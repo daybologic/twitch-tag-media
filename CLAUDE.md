@@ -73,6 +73,8 @@ Each `.t` file defines two packages:
 
 2. `package main` — a one-liner: `exit(ClassName->new->run)`.
 
+All `t/*.t` files must be marked executable (`chmod +x`). New test files must have the executable bit set before committing.
+
 **Mocking:**
 
 External calls (e.g. `_system` on the backend base class) are mocked via `$self->mock($package, $method)`, which uses `Test::MockModule` internally and records all calls. Use `$self->mockCallsWithObject($package, $method)` to retrieve the call log as an arrayref of arrayrefs (each including `$self` as the first element). Use `$self->mockCalls(...)` when the object reference is not needed. Assertions are made with `Test::Deep::cmp_deeply`.
