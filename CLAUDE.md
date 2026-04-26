@@ -65,6 +65,7 @@ After any modification, run `git diff` and confirm only the intended lines chang
 
 Follow Gitmoji (https://gitmoji.dev) for commit message prefixes. Notable conventions used in this project:
 - ⚰️ — removing dead code
+- ➕ — adding a dependency
 
 ## Unit Tests (`t/*.t`)
 

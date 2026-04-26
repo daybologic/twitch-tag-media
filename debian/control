@@ -9,6 +9,9 @@ Build-Depends-Indep: libsys-cpu-perl,
  libipc-run3-perl,
  libmoose-perl,
  libreadonly-perl,
+ libtest-deep-perl,
+ libtest-exception-perl,
+ libtest-mockmodule-perl,
  libuniversal-require-perl,
  sox
 Standards-Version: 4.7.2
