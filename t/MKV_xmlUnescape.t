@@ -39,6 +39,7 @@ use lib 'externals/libtest-module-runnable-perl/lib';
 extends 'Test::Module::Runnable';
 
 use Daybo::Twitch::TagWrap::Backend::MKV;
+use English qw(-no_match_vars);
 use POSIX qw(EXIT_SUCCESS);
 use Test::More 0.96;
 

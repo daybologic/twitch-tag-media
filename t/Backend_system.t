@@ -67,12 +67,12 @@ sub testFailedToRun {
 	my $cmd = $self->uniqueStr();
 
 	my ($mockPackage, $mockMethod) = ('Daybo::Twitch::TagWrap::Backend', 'run3');
-	$self->mock($mockPackage, $mockMethod, sub { $? = -1 });
+	$self->mock($mockPackage, $mockMethod, sub { $CHILD_ERROR =-1 });
 
 	throws_ok(
 		sub { $self->sut->_system($cmd) },
 		qr/Failed to run \Q$cmd\E/,
-		'dies when $? is -1 (failed to exec)',
+		'dies when $CHILD_ERROR is -1 (failed to exec)',
 	);
 
 	return EXIT_SUCCESS;
@@ -85,7 +85,7 @@ sub testNonZeroExit {
 	my $cmd = $self->uniqueStr();
 
 	my ($mockPackage, $mockMethod) = ('Daybo::Twitch::TagWrap::Backend', 'run3');
-	$self->mock($mockPackage, $mockMethod, sub { $? = 1 << 8 });
+	$self->mock($mockPackage, $mockMethod, sub { $CHILD_ERROR =1 << 8 });
 
 	throws_ok(
 		sub { $self->sut->_system($cmd) },
@@ -103,7 +103,7 @@ sub testSignalDeath {
 	my $cmd = $self->uniqueStr();
 
 	my ($mockPackage, $mockMethod) = ('Daybo::Twitch::TagWrap::Backend', 'run3');
-	$self->mock($mockPackage, $mockMethod, sub { $? = 2 });
+	$self->mock($mockPackage, $mockMethod, sub { $CHILD_ERROR =2 });
 
 	eval { $self->sut->_system($cmd) };
 	like($EVAL_ERROR,   qr/\Q$cmd\E died with signal 2/, 'dies with signal death message');
@@ -119,7 +119,7 @@ sub testSignalDeathWithCore {
 	my $cmd = $self->uniqueStr();
 
 	my ($mockPackage, $mockMethod) = ('Daybo::Twitch::TagWrap::Backend', 'run3');
-	$self->mock($mockPackage, $mockMethod, sub { $? = 3 | 128 });
+	$self->mock($mockPackage, $mockMethod, sub { $CHILD_ERROR =3 | 128 });
 
 	throws_ok(
 		sub { $self->sut->_system($cmd) },
@@ -138,7 +138,7 @@ sub testSuccess {
 	my $arg = $self->uniqueStr();
 
 	my ($mockPackage, $mockMethod) = ('Daybo::Twitch::TagWrap::Backend', 'run3');
-	$self->mock($mockPackage, $mockMethod, sub { $? = 0 });
+	$self->mock($mockPackage, $mockMethod, sub { $CHILD_ERROR =0 });
 
 	my $result = $self->sut->_system($cmd, $arg);
 	is($result, 0, 'returns 0 on clean exit');
