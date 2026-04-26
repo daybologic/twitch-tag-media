@@ -38,24 +38,6 @@ use File::Spec;
 use File::Temp qw(tempfile);
 use Readonly;
 
-=item C<deleteTags($file)>
-
-No-op for MKV files; tag removal is handled implicitly by C<writeTags>.
-
-=cut
-
-sub deleteTags {
-	# no-op
-}
-
-=item C<readTags($file)>
-
-Runs C<mkvextract tags FILE> and parses the Matroska XML output to
-extract the canonical tag fields (artist, album, track, year, comment).
-Returns a hash ref of the fields found, or C<undef> if none are present.
-
-=cut
-
 Readonly my %__tagMap => (
 	album   => 'ALBUM',
 	artist  => 'ARTIST',
@@ -66,37 +48,16 @@ Readonly my %__tagMap => (
 
 Readonly my %__reverseTagMap => reverse %__tagMap;
 
-sub readTags {
-	my ($self, $file) = @_;
+=item C<__buildTagXml($artist, $album, $track, $year, $comment)>
 
-	open(my $fh, '-|', 'mkvextract', 'tags', $file) or return;
-	local $INPUT_RECORD_SEPARATOR = undef;
-	my $xml = <$fh>;
-	close($fh);
-
-	return unless defined($xml);
-
-	my %tags;
-	while ($xml =~ m{<Simple>\s*<Name>([^<]+)</Name>\s*<String>([^<]*)</String>.*?</Simple>}gs) {
-		my ($name, $value) = ($1, $2);
-		my $field = $__reverseTagMap{$name};
-		$tags{$field} = __xmlUnescape($value) if (defined($field));
-	}
-
-	return %tags ? \%tags : undef;
-}
-
-=item C<writeTags($file, $artist, $album, $track, $year, $comment)>
-
-Writes Matroska global tags to C<$file> using C<mkvpropedit>.  Builds an
-XML tag file (Matroska tag format), writes it to a temporary file, then
-calls C<mkvpropedit --tags global:TMPFILE FILE>.  The temporary XML file
-is removed after the call.  No return value.
+Constructs the Matroska XML tag document from the given field values.
+Fields that are C<undef> or empty string are omitted.  Values are
+XML-escaped via L</__xmlEscape>.  Returns the XML string.
 
 =cut
 
-sub writeTags {
-	my ($self, $file, $artist, $album, $track, $year, $comment) = @_;
+sub __buildTagXml {
+	my ($artist, $album, $track, $year, $comment) = @_;
 
 	my %values = (
 		album   => $album,
@@ -115,6 +76,88 @@ sub writeTags {
 			$__tagMap{$field}, __xmlEscape($values{$field}));
 	}
 	$xml .= "</Tag>\n</Tags>\n";
+
+	return $xml;
+}
+
+=item C<deleteTags($file)>
+
+No-op for MKV files; tag removal is handled implicitly by C<writeTags>.
+
+=cut
+
+sub deleteTags {
+	# no-op
+}
+
+=item C<__parseTagXml($xml)>
+
+Parses the Matroska XML string returned by C<mkvextract>, extracts
+recognised tag fields via C<%__reverseTagMap>, and unescapes values via
+L</__xmlUnescape>.  Returns a hash ref of the fields found, or C<undef>
+if none are recognised.
+
+=cut
+
+sub __parseTagXml {
+	my ($xml) = @_;
+
+	my %tags;
+	while ($xml =~ m{<Simple>\s*<Name>([^<]+)</Name>\s*<String>([^<]*)</String>.*?</Simple>}gs) {
+		my ($name, $value) = ($1, $2);
+		my $field = $__reverseTagMap{$name};
+		$tags{$field} = __xmlUnescape($value) if (defined($field));
+	}
+
+	return %tags ? \%tags : undef;
+}
+
+=item C<readTags($file)>
+
+Runs C<mkvextract tags FILE> and parses the Matroska XML output to
+extract the canonical tag fields (artist, album, track, year, comment).
+Returns a hash ref of the fields found, or C<undef> if none are present.
+
+=cut
+
+sub readTags {
+	my ($self, $file) = @_;
+	my $xml = $self->__readTagXml($file);
+	return unless defined($xml);
+	return __parseTagXml($xml);
+}
+
+=item C<__readTagXml($file)>
+
+Runs C<mkvextract tags FILE> via L<Daybo::Twitch::TagWrap::Backend/_openPipe>
+and returns the raw XML output as a string, or C<undef> if the pipe
+could not be opened.
+
+=cut
+
+sub __readTagXml {
+	my ($self, $file) = @_;
+	my $fh = $self->_openPipe('mkvextract', 'tags', $file);
+	return unless defined($fh);
+	local $INPUT_RECORD_SEPARATOR = undef;
+	my $xml = <$fh>;
+	close($fh);
+	return $xml;
+}
+
+=item C<writeTags($file, $artist, $album, $track, $year, $comment)>
+
+Writes Matroska global tags to C<$file> using C<mkvpropedit>.  Builds an
+XML tag file (Matroska tag format), writes it to a temporary file, then
+calls C<mkvpropedit --tags global:TMPFILE FILE>.  The temporary XML file
+is removed after the call.  No return value.
+
+=cut
+
+sub writeTags {
+	my ($self, $file, $artist, $album, $track, $year, $comment) = @_;
+
+	my $xml = __buildTagXml($artist, $album, $track, $year, $comment);
 
 	my ($fh, $temp) = tempfile(
 		'.twitch-tag-mkvpropedit.XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',

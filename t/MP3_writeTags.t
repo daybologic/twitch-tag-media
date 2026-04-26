@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# Twitch MP3 tagger.
+# Twitch media tagger.
 # Copyright (c) 2023-2026, Rev. Duncan Ross Palmer (2E0EOL)
 # All rights reserved.
 #
@@ -29,75 +29,62 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-package main;
+package MP3_writeTags_Tests;
 use strict;
 use warnings;
+use Moose;
 
-eval {
-	import Sys::CPU;
-};
+use lib 'externals/libtest-module-runnable-perl/lib';
 
-use ExtUtils::MakeMaker;
+extends 'Test::Module::Runnable';
 
-WriteMakefile(
-	ABSTRACT     => 'Perl program for tagging Twitch media files downloaded with yt-dlp',
-	AUTHOR       => 'Rev. Duncan Ross Palmer, 2E0EOL (2e0eol@gmail.com)',
+use Daybo::Twitch::TagWrap::Backend::MP3;
+use English qw(-no_match_vars);
+use POSIX qw(EXIT_SUCCESS);
+use Test::Deep qw(cmp_deeply shallow);
+use Test::Exception;
+use Test::More 0.96;
 
-	EXE_FILES    => [glob q('bin/*')],
-	NAME         => 'Daybo::Twitch::Retag',
-
-        PREREQ_PM => {
-                'IPC::Run3'          => 0,
-                'Moose'              => 0,
-                'UNIVERSAL::require' => 0,
-	}, BUILD_REQUIRES => {
-		'Sys::CPU' => 0,
-		#'Moose'           => 0,
-		#'Test::More'      => 0,
-	},
-
-	VERSION_FROM => 'lib/Daybo/Twitch/Retag.pm',
-);
-
-package MY;
-use strict;
-use warnings;
-
-sub test {
+sub setUp {
 	my ($self) = @_;
-	my $inherited = $self->SUPER::test(@_);
 
-	my $njobs;
-	eval {
-		$njobs = 2 * Sys::CPU::cpu_count();
-	};
-	if ($@) {
-		$njobs = 2;
-	}
+	$self->sut(Daybo::Twitch::TagWrap::Backend::MP3->new());
 
-	$inherited = sprintf('export HARNESS_OPTIONS=$(shell if echo $$PERL5OPT | grep -qe "-MDevel::Cover"; then echo ""; else echo j%u; fi)', $njobs) . "\n" . $inherited;
-
-	return $inherited;
+	return EXIT_SUCCESS;
 }
 
-sub postamble {
-    return q~
-deb :: pure_all
-	sbuild -A
+sub testSuccess {
+	my ($self) = @_;
+	plan tests => 1;
 
-cover :: pure_all
-	TEST_QUICK=1 HARNESS_PERL_SWITCHES=-MDevel::Cover make test && cover
+	my $file    = $self->uniqueStr();
+	my $artist  = $self->uniqueStr();
+	my $album   = $self->uniqueStr();
+	my $track   = $self->uniqueStr();
+	my $year    = $self->unique();
+	my $comment = $self->uniqueStr();
 
-check :: pure_all
-	@tt/run-tests.sh
+	my ($mockPackage, $mockMethod) = ('Daybo::Twitch::TagWrap::Backend', '_system');
+	$self->mock($mockPackage, $mockMethod);
 
-clean :: 
-	rm -rf cover_db
+	$self->sut->writeTags($file, $artist, $album, $track, $year, $comment);
 
-# Extend test target
-test :: check
+	my $mockCalls = $self->mockCallsWithObject($mockPackage, $mockMethod);
+	cmp_deeply($mockCalls, [[
+		shallow($self->sut),
+		'id3v2',
+		'--artist',  $artist,
+		'--album',   $album,
+		'--song',    $track,
+		'--year',    $year,
+		'--comment', $comment,
+		$file,
+	]], sprintf('one call to %s/%s', $mockPackage, $mockMethod)) or diag(explain($mockCalls));
 
-    ~;
+	return EXIT_SUCCESS;
 }
 
-1;
+package main; ## no critic (Modules::ProhibitMultiplePackages)
+use strict;
+use warnings;
+exit(MP3_writeTags_Tests->new->run);

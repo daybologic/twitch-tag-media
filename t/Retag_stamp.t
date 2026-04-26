@@ -1,5 +1,5 @@
-#!/bin/sh
-# Twitch MP3 tagger.
+#!/usr/bin/perl
+# Twitch media tagger.
 # Copyright (c) 2023-2026, Rev. Duncan Ross Palmer (2E0EOL)
 # All rights reserved.
 #
@@ -13,7 +13,7 @@
 #       notice, this list of conditions and the following disclaimer in the
 #       documentation and/or other materials provided with the distribution.
 #
-#     * Neither the name of the Daybo Logic nor the names of its contributors
+#     * Neither the name of the the maintainer, nor the names of its contributors
 #       may be used to endorse or promote products derived from this software
 #       without specific prior written permission.
 #
@@ -29,11 +29,42 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-set -eu
+package Retag_stamp_Tests;
+use strict;
+use warnings;
+use Moose;
 
-scriptDir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-repoRoot=$(CDPATH= cd -- "$scriptDir/.." && pwd)
+use lib 'externals/libtest-module-runnable-perl/lib';
 
-find "${repoRoot}/bin/" -type f -exec "${scriptDir}/perlcritic.sh" {} +
-find "${repoRoot}/lib/" -name "*.pm" -type f -exec "${scriptDir}/perlcritic.sh" {} +
-find "${repoRoot}/t/" -name "*.t" -type f -exec "${scriptDir}/perlcritic.sh" {} +
+extends 'Test::Module::Runnable';
+
+use Daybo::Twitch::Retag;
+use English qw(-no_match_vars);
+use POSIX qw(EXIT_SUCCESS);
+use Test::More 0.96;
+
+sub setUp {
+	my ($self) = @_;
+
+	$self->sut(Daybo::Twitch::Retag->new());
+
+	return EXIT_SUCCESS;
+}
+
+sub testSuccess {
+	my ($self) = @_;
+	plan tests => 1;
+
+	my $start = $self->unique();
+	$self->sut->_stats({ start_time => $start });
+	$self->mock('Daybo::Twitch::Retag', 'time', sub { return $start + 3661 }); # 1h 1m 1s elapsed
+
+	is($self->sut->__stamp(), '01:01:01.000', 'formats elapsed time as HH:MM:SS.mmm');
+
+	return EXIT_SUCCESS;
+}
+
+package main; ## no critic (Modules::ProhibitMultiplePackages)
+use strict;
+use warnings;
+exit(Retag_stamp_Tests->new->run);

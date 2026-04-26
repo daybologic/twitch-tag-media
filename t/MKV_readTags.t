@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# Twitch MP3 tagger.
+# Twitch media tagger.
 # Copyright (c) 2023-2026, Rev. Duncan Ross Palmer (2E0EOL)
 # All rights reserved.
 #
@@ -29,75 +29,68 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-package main;
+package MKV_readTags_Tests;
 use strict;
 use warnings;
+use Moose;
 
-eval {
-	import Sys::CPU;
-};
+use lib 'externals/libtest-module-runnable-perl/lib';
 
-use ExtUtils::MakeMaker;
+extends 'Test::Module::Runnable';
 
-WriteMakefile(
-	ABSTRACT     => 'Perl program for tagging Twitch media files downloaded with yt-dlp',
-	AUTHOR       => 'Rev. Duncan Ross Palmer, 2E0EOL (2e0eol@gmail.com)',
+use Daybo::Twitch::TagWrap::Backend::MKV;
+use English qw(-no_match_vars);
+use POSIX qw(EXIT_SUCCESS);
+use Test::Deep qw(cmp_deeply);
+use Test::More 0.96;
 
-	EXE_FILES    => [glob q('bin/*')],
-	NAME         => 'Daybo::Twitch::Retag',
-
-        PREREQ_PM => {
-                'IPC::Run3'          => 0,
-                'Moose'              => 0,
-                'UNIVERSAL::require' => 0,
-	}, BUILD_REQUIRES => {
-		'Sys::CPU' => 0,
-		#'Moose'           => 0,
-		#'Test::More'      => 0,
-	},
-
-	VERSION_FROM => 'lib/Daybo/Twitch/Retag.pm',
-);
-
-package MY;
-use strict;
-use warnings;
-
-sub test {
+sub setUp {
 	my ($self) = @_;
-	my $inherited = $self->SUPER::test(@_);
 
-	my $njobs;
-	eval {
-		$njobs = 2 * Sys::CPU::cpu_count();
-	};
-	if ($@) {
-		$njobs = 2;
-	}
+	$self->sut(Daybo::Twitch::TagWrap::Backend::MKV->new());
 
-	$inherited = sprintf('export HARNESS_OPTIONS=$(shell if echo $$PERL5OPT | grep -qe "-MDevel::Cover"; then echo ""; else echo j%u; fi)', $njobs) . "\n" . $inherited;
-
-	return $inherited;
+	return EXIT_SUCCESS;
 }
 
-sub postamble {
-    return q~
-deb :: pure_all
-	sbuild -A
-
-cover :: pure_all
-	TEST_QUICK=1 HARNESS_PERL_SWITCHES=-MDevel::Cover make test && cover
-
-check :: pure_all
-	@tt/run-tests.sh
-
-clean :: 
-	rm -rf cover_db
-
-# Extend test target
-test :: check
-
-    ~;
+sub tearDown {
+	my ($self) = @_;
+	$self->clearMocks();
+	return EXIT_SUCCESS;
 }
 
-1;
+sub testFailure {
+	my ($self) = @_;
+	plan tests => 1;
+
+	my ($mockPackage, $mockMethod) = ('Daybo::Twitch::TagWrap::Backend::MKV', '__readTagXml');
+	$self->mock($mockPackage, $mockMethod, sub { return undef });
+
+	my $result = $self->sut->readTags($self->uniqueStr());
+	is($result, undef, 'undef returned when __readTagXml fails');
+
+	return EXIT_SUCCESS;
+}
+
+sub testSuccess {
+	my ($self) = @_;
+	plan tests => 1;
+
+	my $artist = $self->uniqueStr();
+	my $xml    = "<Tags><Tag><Targets/>"
+		. "<Simple><Name>ARTIST</Name><String>${artist}</String></Simple>"
+		. "</Tag></Tags>";
+
+	my ($mockPackage, $mockMethod) = ('Daybo::Twitch::TagWrap::Backend::MKV', '__readTagXml');
+	$self->mock($mockPackage, $mockMethod, sub { return $xml });
+
+	my $result = $self->sut->readTags($self->uniqueStr());
+	cmp_deeply($result, { artist => $artist }, 'parse result flows through from __readTagXml')
+		or diag(explain($result));
+
+	return EXIT_SUCCESS;
+}
+
+package main; ## no critic (Modules::ProhibitMultiplePackages)
+use strict;
+use warnings;
+exit(MKV_readTags_Tests->new->run);
