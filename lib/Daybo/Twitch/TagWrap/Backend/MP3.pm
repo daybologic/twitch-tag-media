@@ -68,17 +68,25 @@ comment
 
 =cut
 
+sub _readTagLines {
+	my ($self, $file) = @_;
+	return unless open(my $fh, '-|', 'id3v2', '-l', $file);
+	my @lines = <$fh>;
+	$fh->close();
+	return \@lines;
+}
+
 sub readTags {
 	my ($self, $file) = @_;
 
-	return unless (open(my $fh, '-|', 'id3v2', '-l', $file));
+	my $lines = $self->_readTagLines($file);
+	return unless defined($lines);
 
 	my %tags;
-	while (my $line = <$fh>) {
+	for my $line (@{$lines}) {
 		chomp($line);
 		__parseTag(\%tags, $line);
 	}
-	$fh->close();
 
 	return %tags ? \%tags : undef;
 }
