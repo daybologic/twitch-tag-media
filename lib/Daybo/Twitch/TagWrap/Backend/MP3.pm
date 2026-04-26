@@ -36,6 +36,26 @@ extends 'Daybo::Twitch::TagWrap::Backend';
 use English qw(-no_match_vars);
 use File::Spec;
 
+=head1 METHODS
+
+=over
+
+=item C<__readTagLines($file)>
+
+Runs C<id3v2 -l $file> via L<Daybo::Twitch::TagWrap::Backend/_openPipe> and returns a reference to an
+array of raw output lines, or C<undef> if the pipe could not be opened.
+
+=cut
+
+sub __readTagLines {
+	my ($self, $file) = @_;
+	my $fh = $self->_openPipe('id3v2', '-l', $file);
+	return unless defined($fh);
+	my @lines = <$fh>;
+	$fh->close();
+	return \@lines;
+}
+
 =item C<readTags($file)>
 
 Given C<$file>, we will run C<id3v2> over it and collect the tags.
@@ -67,22 +87,6 @@ comment
 =back
 
 =cut
-
-=item C<__readTagLines($file)>
-
-Runs C<id3v2 -l $file> via L</_openPipe> and returns a reference to an
-array of raw output lines, or C<undef> if the pipe could not be opened.
-
-=cut
-
-sub __readTagLines {
-	my ($self, $file) = @_;
-	my $fh = $self->_openPipe('id3v2', '-l', $file);
-	return unless defined($fh);
-	my @lines = <$fh>;
-	$fh->close();
-	return \@lines;
-}
 
 sub readTags {
 	my ($self, $file) = @_;
@@ -175,5 +179,9 @@ sub __initParsers {
 
 	return;
 }
+
+=back
+
+=cut
 
 1;
