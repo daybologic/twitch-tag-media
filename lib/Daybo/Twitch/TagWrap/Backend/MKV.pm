@@ -38,6 +38,48 @@ use File::Spec;
 use File::Temp qw(tempfile);
 use Readonly;
 
+Readonly my %__tagMap => (
+	album   => 'ALBUM',
+	artist  => 'ARTIST',
+	comment => 'COMMENT',
+	track   => 'TITLE',
+	year    => 'DATE_RELEASED',
+);
+
+Readonly my %__reverseTagMap => reverse %__tagMap;
+
+=item C<__buildTagXml($artist, $album, $track, $year, $comment)>
+
+Constructs the Matroska XML tag document from the given field values.
+Fields that are C<undef> or empty string are omitted.  Values are
+XML-escaped via L</__xmlEscape>.  Returns the XML string.
+
+=cut
+
+sub __buildTagXml {
+	my ($artist, $album, $track, $year, $comment) = @_;
+
+	my %values = (
+		album   => $album,
+		artist  => $artist,
+		comment => $comment,
+		track   => $track,
+		year    => $year,
+	);
+
+	my $xml = qq{<?xml version="1.0" encoding="UTF-8"?>\n};
+	$xml .= qq{<!DOCTYPE Tags SYSTEM "matroskatags.dtd">\n};
+	$xml .= "<Tags>\n<Tag>\n<Targets/>\n";
+	for my $field (sort keys %__tagMap) {
+		next unless (defined($values{$field}) && length($values{$field}));
+		$xml .= sprintf("<Simple><Name>%s</Name><String>%s</String></Simple>\n",
+			$__tagMap{$field}, __xmlEscape($values{$field}));
+	}
+	$xml .= "</Tag>\n</Tags>\n";
+
+	return $xml;
+}
+
 =item C<deleteTags($file)>
 
 No-op for MKV files; tag removal is handled implicitly by C<writeTags>.
@@ -55,16 +97,6 @@ extract the canonical tag fields (artist, album, track, year, comment).
 Returns a hash ref of the fields found, or C<undef> if none are present.
 
 =cut
-
-Readonly my %__tagMap => (
-	album   => 'ALBUM',
-	artist  => 'ARTIST',
-	comment => 'COMMENT',
-	track   => 'TITLE',
-	year    => 'DATE_RELEASED',
-);
-
-Readonly my %__reverseTagMap => reverse %__tagMap;
 
 sub readTags {
 	my ($self, $file) = @_;
@@ -98,23 +130,7 @@ is removed after the call.  No return value.
 sub writeTags {
 	my ($self, $file, $artist, $album, $track, $year, $comment) = @_;
 
-	my %values = (
-		album   => $album,
-		artist  => $artist,
-		comment => $comment,
-		track   => $track,
-		year    => $year,
-	);
-
-	my $xml = qq{<?xml version="1.0" encoding="UTF-8"?>\n};
-	$xml .= qq{<!DOCTYPE Tags SYSTEM "matroskatags.dtd">\n};
-	$xml .= "<Tags>\n<Tag>\n<Targets/>\n";
-	for my $field (sort keys %__tagMap) {
-		next unless (defined($values{$field}) && length($values{$field}));
-		$xml .= sprintf("<Simple><Name>%s</Name><String>%s</String></Simple>\n",
-			$__tagMap{$field}, __xmlEscape($values{$field}));
-	}
-	$xml .= "</Tag>\n</Tags>\n";
+	my $xml = __buildTagXml($artist, $album, $track, $year, $comment);
 
 	my ($fh, $temp) = tempfile(
 		'.twitch-tag-mkvpropedit.XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
