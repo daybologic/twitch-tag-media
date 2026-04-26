@@ -86,6 +86,33 @@ All `t/*.t` files must be marked executable (`chmod +x`). New test files must ha
 
 External calls (e.g. `_system` on the backend base class) are mocked via `$self->mock($package, $method)`, which uses `Test::MockModule` internally and records all calls. Use `$self->mockCallsWithObject($package, $method)` to retrieve the call log as an arrayref of arrayrefs (each including `$self` as the first element). Use `$self->mockCalls(...)` when the object reference is not needed. Assertions are made with `Test::Deep::cmp_deeply`.
 
+**Mocking `CORE::open` (for seam methods that wrap `open`):**
+
+Perl built-ins cannot be mocked with `Test::MockModule`. To test a seam method that calls bare `open()`, override `CORE::GLOBAL::open` in a `BEGIN` block so the override is in place before any module loads:
+
+```perl
+our $mockOpen;
+
+BEGIN {
+    *CORE::GLOBAL::open = sub (*;$@) {
+        if (defined $Package_Tests::mockOpen) {
+            return $Package_Tests::mockOpen->(@_);
+        }
+        return CORE::open($_[0])                       if @_ == 1;
+        return CORE::open($_[0], $_[1])                if @_ == 2;
+        return CORE::open($_[0], $_[1], @_[2 .. $#_]);
+    };
+}
+```
+
+Key rules:
+- The seam method in production code **must** call bare `open(...)`, not `CORE::open(...)`. `CORE::open` explicitly bypasses `CORE::GLOBAL::open` and will never be intercepted.
+- The `(*;$@)` prototype is required. Without it, bareword filehandles used by system modules (e.g. `Cwd`) break under `use strict` when the fallback path runs.
+- Do **not** use `goto &CORE::open` for the fallback — it does not correctly pass bareword filehandle arguments on this platform. Dispatch by arity (`@_ == 1/2/3+`) instead.
+- Use `our $mockOpen` (package variable) with `local $mockOpen = sub { ... }` inside each test method for automatic restoration. Reference it via the full package name (`$Package_Tests::mockOpen`) inside the `BEGIN` closure.
+- In the success mock, `$_[0] = $fake_fh` sets the caller's filehandle variable via alias. This works because `@_` elements are aliases.
+- `tearDown` should `undef $mockOpen` as a safety net.
+
 **Test data:**
 
 Use `$self->uniqueStr()` to generate unique, predictable alphanumeric strings for filenames and other inputs. Do not hardcode values where `uniqueStr` can be used instead.  If the unique value must be an integer, use `$self->unique()` instead.

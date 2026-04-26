@@ -115,7 +115,7 @@ callers such as C<_openPipe> can be unit-tested without spawning real processes.
 
 sub __open {
 	my ($self, $mode, @rest) = @_;
-	CORE::open(my $fh, $mode, @rest) or return;
+	open(my $fh, $mode, @rest) or return;
 	return $fh;
 }
 
