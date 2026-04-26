@@ -73,6 +73,21 @@ sub testFailure {
 	return EXIT_SUCCESS;
 }
 
+sub testMissingTagsKey {
+	my ($self) = @_;
+	plan tests => 1;
+
+	my $json = encode_json({ format => {} });
+
+	my ($mockPackage, $mockMethod) = ('Daybo::Twitch::TagWrap::Backend::MP4', '__readTagJson');
+	$self->mock($mockPackage, $mockMethod, sub { return $json });
+
+	my $result = $self->sut->readTags($self->uniqueStr());
+	is($result, undef, 'undef returned when tags key is absent from format (exercises || {} fallback)');
+
+	return EXIT_SUCCESS;
+}
+
 sub testNoTags {
 	my ($self) = @_;
 	plan tests => 1;
