@@ -70,7 +70,8 @@ comment
 
 sub _readTagLines {
 	my ($self, $file) = @_;
-	return unless open(my $fh, '-|', 'id3v2', '-l', $file);
+	my $fh = $self->_openPipe('id3v2', '-l', $file);
+	return unless defined($fh);
 	my @lines = <$fh>;
 	$fh->close();
 	return \@lines;
