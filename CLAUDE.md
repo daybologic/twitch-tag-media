@@ -57,6 +57,32 @@ A pre-commit hook (`maint/trap-goose-corruption.sh`, configured in `.pre-commit-
 
 After any modification, run `git diff` and confirm only the intended lines changed. Do not commit automatically unless explicitly instructed.
 
+## Unit Tests (`t/*.t`)
+
+Unit tests use `Test::Module::Runnable` (vendored under `externals/libtest-module-runnable-perl/`), a Moose-based framework that auto-discovers and runs all methods whose names match `^test`.
+
+**Structure of each test file:**
+
+Each `.t` file defines two packages:
+
+1. A test class (e.g. `MP3_deleteTags_Tests`) that `extends 'Test::Module::Runnable'` and contains:
+   - `setUp` — instantiates the system under test into `$self->sut(...)`. Must return `EXIT_SUCCESS`.
+   - One or more `test*` methods — each calls `plan tests => N`, exercises `$self->sut`, and returns `EXIT_SUCCESS`.
+
+2. `package main` — a one-liner: `exit(ClassName->new->run)`.
+
+**Mocking:**
+
+External calls (e.g. `_system` on the backend base class) are mocked via `$self->mock($package, $method)`, which uses `Test::MockModule` internally and records all calls. Use `$self->mockCallsWithObject($package, $method)` to retrieve the call log as an arrayref of arrayrefs (each including `$self` as the first element). Use `$self->mockCalls(...)` when the object reference is not needed. Assertions are made with `Test::Deep::cmp_deeply`.
+
+**Test data:**
+
+Use `$self->uniqueStr()` to generate unique, predictable alphanumeric strings for filenames and other inputs. Do not hardcode values where `uniqueStr` can be used instead.
+
+**Philosophy:**
+
+Tests are unit-level: each file covers one method of one class. External processes (`id3v2`, `ffmpeg`, `mkvpropedit`) are never actually invoked — they are always mocked at the `_system` boundary. The test name mirrors the file being tested: `MP3_deleteTags.t` tests `Backend::MP3::deleteTags`.
+
 ## Filename Convention
 
 Expected input filename pattern:
