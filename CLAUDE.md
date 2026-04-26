@@ -46,6 +46,8 @@ Subroutines prefixed with `__` are private (internal to the module). Subroutines
 All subroutines must be in lexical (case-insensitive alphabetical) order, ignoring the `__` prefix when determining position. This applies to new subs and any time existing subs are renamed.
 Calls to subroutines must always include parentheses, so they are visually distinct from access to Moose attributes.
 
+Every subroutine must have a Pod documentation block immediately preceding it (between the previous `=cut` and the `sub` keyword). This applies to all methods, public and private alike.
+
 ## Code Quality Rules
 
 A pre-commit hook (`maint/trap-goose-corruption.sh`, configured in `.pre-commit-config.yaml`) rejects commits if `lib/` contains:

@@ -68,6 +68,13 @@ comment
 
 =cut
 
+=item C<__readTagLines($file)>
+
+Runs C<id3v2 -l $file> via L</_openPipe> and returns a reference to an
+array of raw output lines, or C<undef> if the pipe could not be opened.
+
+=cut
+
 sub __readTagLines {
 	my ($self, $file) = @_;
 	my $fh = $self->_openPipe('id3v2', '-l', $file);
