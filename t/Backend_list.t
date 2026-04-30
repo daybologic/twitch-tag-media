@@ -1,5 +1,5 @@
-#!/bin/sh
-# Twitch MP3 tagger.
+#!/usr/bin/perl
+# Twitch media tagger.
 # Copyright (c) 2023-2026, Rev. Duncan Ross Palmer (2E0EOL)
 # All rights reserved.
 #
@@ -13,7 +13,7 @@
 #       notice, this list of conditions and the following disclaimer in the
 #       documentation and/or other materials provided with the distribution.
 #
-#     * Neither the name of the Daybo Logic nor the names of its contributors
+#     * Neither the name of the the maintainer, nor the names of its contributors
 #       may be used to endorse or promote products derived from this software
 #       without specific prior written permission.
 #
@@ -29,11 +29,60 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-set -eu
+package Backend_list_Tests;
+use strict;
+use warnings;
+use Moose;
 
-scriptDir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-repoRoot=$(CDPATH= cd -- "$scriptDir/.." && pwd)
+use lib 'externals/libtest-module-runnable-perl/lib';
 
-find "${repoRoot}/bin/" -type f -exec "${scriptDir}/perlcritic.sh" {} +
-find "${repoRoot}/lib/" -name "*.pm" -type f -exec "${scriptDir}/perlcritic.sh" {} +
-find "${repoRoot}/t/" -name "*.t" -type f -exec "${scriptDir}/perlcritic.sh" {} +
+extends 'Test::Module::Runnable';
+
+use Daybo::Twitch::TagWrap::Backend;
+use English qw(-no_match_vars);
+use POSIX qw(EXIT_SUCCESS);
+use Test::Deep qw(cmp_deeply);
+use Test::More 0.96;
+
+sub setUp {
+	my ($self) = @_;
+
+	$self->sut(Daybo::Twitch::TagWrap::Backend->new());
+
+	return EXIT_SUCCESS;
+}
+
+sub testEmpty {
+	my ($self) = @_;
+	plan tests => 1;
+
+	my ($pkg, $method) = ('Daybo::Twitch::TagWrap::Backend', '__initBackends');
+	$self->mock($pkg, $method, sub { return {} });
+
+	my $result = $self->sut->list();
+	cmp_deeply($result, [], 'empty arrayref returned when no backends are registered')
+		or diag(explain($result));
+
+	return EXIT_SUCCESS;
+}
+
+sub testSuccess {
+	my ($self) = @_;
+	plan tests => 1;
+
+	my ($k1, $k2, $k3) = ($self->uniqueStr(), $self->uniqueStr(), $self->uniqueStr());
+
+	my ($pkg, $method) = ('Daybo::Twitch::TagWrap::Backend', '__initBackends');
+	$self->mock($pkg, $method, sub { return { $k2 => 1, $k1 => 1, $k3 => 1 } });
+
+	my $result = $self->sut->list();
+	cmp_deeply($result, [sort($k1, $k2, $k3)], 'list returns lexically sorted extension names')
+		or diag(explain($result));
+
+	return EXIT_SUCCESS;
+}
+
+package main; ## no critic (Modules::ProhibitMultiplePackages)
+use strict;
+use warnings;
+exit(Backend_list_Tests->new->run);

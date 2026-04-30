@@ -105,6 +105,32 @@ sub __initBackends {
 	return \%backends;
 }
 
+=item C<__open($mode, @rest)>
+
+Thin wrapper around C<CORE::open> that opens a filehandle in the given
+C<$mode> and returns it, or C<undef> on failure.  Exists as a seam so that
+callers such as C<_openPipe> can be unit-tested without spawning real processes.
+
+=cut
+
+sub __open {
+	my ($self, $mode, @rest) = @_;
+	open(my $fh, $mode, @rest) or return;
+	return $fh;
+}
+
+=item C<_openPipe(@cmd)>
+
+Runs C<@cmd> as a child process and returns an open filehandle connected
+to its standard output, or C<undef> if the process could not be started.
+
+=cut
+
+sub _openPipe {
+	my ($self, @cmd) = @_;
+	return $self->__open('-|', @cmd);
+}
+
 =item C<_system(@args)>
 
 Runs an external command via L<IPC::Run3>, discarding stdout and stderr.

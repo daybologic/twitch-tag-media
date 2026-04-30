@@ -39,6 +39,25 @@ use File::Copy qw(move);
 use File::Temp qw(tempfile);
 use JSON::PP qw(decode_json);
 
+=item C<__readTagJson($file)>
+
+Runs C<ffprobe> over C<$file> via L<Daybo::Twitch::TagWrap::Backend/_openPipe>
+and returns the raw JSON output as a string, or C<undef> if the pipe
+could not be opened.  Dies if the pipe closes uncleanly.
+
+=cut
+
+sub __readTagJson {
+	my ($self, $file) = @_;
+	my @cmd = ('ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_format', '-show_streams', $file);
+	my $fh = $self->_openPipe(@cmd);
+	return unless defined($fh);
+	local $INPUT_RECORD_SEPARATOR = undef;
+	my $json = <$fh>;
+	close($fh) or die("close failed: $ERRNO");
+	return $json;
+}
+
 =item C<readTags($file)>
 
 Given C<$file>, runs C<ffprobe> over it and returns the tags as a hash ref,
@@ -50,14 +69,8 @@ C<year> and C<title> to C<track> to match the common tag interface.
 sub readTags {
 	my ($self, $file) = @_;
 
-	my $json;
-	{
-		my @cmd = ('ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_format', '-show_streams', $file);
-		open(my $fh, '-|', @cmd) or return;
-		local $INPUT_RECORD_SEPARATOR = undef;
-		$json = <$fh>;
-		close($fh) or die("close failed: $ERRNO");
-	}
+	my $json = $self->__readTagJson($file);
+	return unless defined($json);
 
 	my $data = decode_json($json);
 	my $tags = $data->{format}{tags} || {};
@@ -70,7 +83,7 @@ sub readTags {
 		$tags->{track} = delete($tags->{title});
 	}
 
-	return ($tags && scalar(keys(%$tags)) > 0) ? $tags : undef;
+	return scalar(keys(%$tags)) > 0 ? $tags : undef;
 }
 
 =item C<deleteTags($file)>
