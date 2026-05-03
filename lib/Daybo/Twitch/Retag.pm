@@ -477,6 +477,7 @@ sub __normalizeArtist {
 	$artist = 'Stoneface & Terminal' if ($artist eq 'Stoneface Terminal');
 	$artist = 'XiJaro & Pitch' if ($artistRaw eq 'XiJaroAndPitch');
 	$artist = 'FaBiESto' if ($artistRaw eq 'FaBiESto');
+	$artist = 'Gabriel & Dresden' if ($artistRaw eq 'gabrielanddresden');
 	$artist = $artistRaw if ($artistRaw eq 'Music4ThaMasses');
 	$artist = $artistRaw if ($artistRaw eq 'RaZoR368');
 	$artist = lc($artistRaw) if ($artistRaw =~ m/^tkkttony$/i);
