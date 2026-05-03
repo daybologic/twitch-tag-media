@@ -29,7 +29,9 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-package FailOnCloseHandle;
+package FailOnCloseHandle; ## no critic (Modules::ProhibitMultiplePackages)
+use strict;
+use warnings;
 
 sub TIEHANDLE {
 	my ($class, $content) = @_;
@@ -45,7 +47,7 @@ sub CLOSE {
 	return 0;
 }
 
-package MP4_readTagJson_Tests;
+package MP4_readTagJson_Tests; ## no critic (Modules::ProhibitMultiplePackages)
 use strict;
 use warnings;
 use Moose;
@@ -104,7 +106,7 @@ sub testFailure {
 	my $file = $self->uniqueStr();
 
 	my ($mockPackage, $mockMethod) = ('Daybo::Twitch::TagWrap::Backend', '_openPipe');
-	$self->mock($mockPackage, $mockMethod, sub { return undef });
+	$self->mock($mockPackage, $mockMethod, sub { return });
 
 	my $result = $self->sut->__readTagJson($file);
 	is($result, undef, 'undef returned when _openPipe fails');
