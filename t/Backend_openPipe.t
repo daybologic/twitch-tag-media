@@ -65,7 +65,7 @@ sub testFailure {
 	my $cmd = $self->uniqueStr();
 
 	my ($pkg, $method) = ('Daybo::Twitch::TagWrap::Backend', '__open');
-	$self->mock($pkg, $method, sub { return undef });
+	$self->mock($pkg, $method, sub { return });
 
 	my $result = $self->sut->_openPipe($cmd);
 	is($result, undef, 'undef returned when __open fails');
