@@ -28,7 +28,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-package Daybo::Twitch::TagWrap::Backend::Opus;
+package Daybo::Twitch::TagWrap::Backend::OPUS;
 use Moose;
 
 extends 'Daybo::Twitch::TagWrap::Backend';
