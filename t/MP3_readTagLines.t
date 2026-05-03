@@ -66,7 +66,7 @@ sub testFailure {
 	my $file = $self->uniqueStr();
 
 	my ($mockPackage, $mockMethod) = ('Daybo::Twitch::TagWrap::Backend', '_openPipe');
-	$self->mock($mockPackage, $mockMethod, sub { return undef });
+	$self->mock($mockPackage, $mockMethod, sub { return });
 
 	my $result = $self->sut->__readTagLines($file);
 	is($result, undef, 'undef returned when _openPipe fails');

@@ -65,7 +65,7 @@ sub testFailure {
 	plan tests => 1;
 
 	my ($mockPackage, $mockMethod) = ('Daybo::Twitch::TagWrap::Backend::MP4', '__readTagJson');
-	$self->mock($mockPackage, $mockMethod, sub { return undef });
+	$self->mock($mockPackage, $mockMethod, sub { return });
 
 	my $result = $self->sut->readTags($self->uniqueStr());
 	is($result, undef, 'undef returned when __readTagJson fails');
