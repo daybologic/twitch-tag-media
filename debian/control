@@ -5,6 +5,7 @@ Maintainer: Rev. Duncan Ross Palmer <2e0eol@gmail.com>
 Build-Depends: debhelper-compat (= 13)
 Build-Depends-Indep: libsys-cpu-perl,
  id3v2,
+ opustags,
  lame,
  libipc-run3-perl,
  libmoose-perl,
@@ -23,6 +24,7 @@ Package: twitch-tag-media
 Architecture: all
 Depends: ${shlibs:Depends}, ${misc:Depends},
  ffmpeg,
+ opustags,
  id3v2,
  libipc-run3-perl,
  libmoose-perl,
