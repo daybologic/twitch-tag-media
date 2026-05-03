@@ -37,7 +37,7 @@ use English qw(-no_match_vars);
 
 =item C<__readTagLines($file)>
 
-Runs C<opustags -l> over C<$file> via
+Runs C<opustags> over C<$file> via
 L<Daybo::Twitch::TagWrap::Backend/_openPipe> and returns an array ref of
 output lines, or C<undef> if the pipe could not be opened.
 
@@ -45,7 +45,7 @@ output lines, or C<undef> if the pipe could not be opened.
 
 sub __readTagLines {
 	my ($self, $file) = @_;
-	my $fh = $self->_openPipe('opustags', '-l', $file);
+	my $fh = $self->_openPipe('opustags', $file);
 	return unless defined($fh);
 	my @lines = <$fh>;
 	close($fh) or die("close failed: $ERRNO");
@@ -66,7 +66,7 @@ sub deleteTags {
 
 =item C<readTags($file)>
 
-Given C<$file>, runs C<opustags -l> over it and returns the Vorbis comment
+Given C<$file>, runs C<opustags> over it and returns the Vorbis comment
 tags as a hash ref, or C<undef> if no tags are present.  The C<DATE> key is
 normalised to C<year> and C<TITLE> to C<track> to match the common tag
 interface.  All keys are lowercased.
