@@ -119,8 +119,6 @@ sub writeTags {
 		$file,
 	);
 
-	die("opustags failed for '$file'") if $exitCode != 0;
-
 	return;
 }
 
