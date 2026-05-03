@@ -909,8 +909,8 @@ sub __tagPerProcess {
 	}
 
 	my $changeCount = 0;
-	$changeCount = $self->__logTagChanges($file, $pct, $existing, $artist, $album, $track, $year, $comment)
-	    if ($existing);
+	$existing //= {};
+	$changeCount = $self->__logTagChanges($file, $pct, $existing, $artist, $album, $track, $year, $comment);
 
 	my @stat = stat($file)
 	    or die("Cannot stat '$file': $ERRNO");
