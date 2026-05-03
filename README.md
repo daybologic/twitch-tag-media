@@ -164,6 +164,7 @@ Feedback welcome.
 ## Dependencies
 
 - [`id3v2`](https://id3v2.sourceforge.net/) — command-line ID3 tagger
+- [`opustags`](https://github.com/fmang/opustags) — command-line Opus tagger
 
 ## Contributing
 
