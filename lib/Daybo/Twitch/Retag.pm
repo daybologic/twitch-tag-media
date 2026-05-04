@@ -78,11 +78,17 @@ sub BUILD {
 	my ($self) = @_;
 	$self->verbose(1) if ($self->json);
 	Log::Log4perl->init_once(\<<'END_LOG4PERL_CONF');
-log4perl.rootLogger = WARN, Screen
-log4perl.appender.Screen = Log::Log4perl::Appender::Screen
-log4perl.appender.Screen.stderr = 0
-log4perl.appender.Screen.layout = Log::Log4perl::Layout::PatternLayout
-log4perl.appender.Screen.layout.ConversionPattern = %m%n
+log4perl.rootLogger = WARN, SCREEN
+log4perl.appender.SCREEN = Log::Log4perl::Appender::ScreenColoredLevels
+log4perl.appender.SCREEN.stderr = 0
+log4perl.appender.SCREEN.layout = Log::Log4perl::Layout::PatternLayout
+log4perl.appender.SCREEN.layout.ConversionPattern = %m%n
+log4perl.appender.SCREEN.color.TRACE = white
+log4perl.appender.SCREEN.color.DEBUG = bright_blue
+log4perl.appender.SCREEN.color.INFO  = bright_white
+log4perl.appender.SCREEN.color.WARN  = yellow
+log4perl.appender.SCREEN.color.ERROR = red
+log4perl.appender.SCREEN.color.FATAL = bright_red
 END_LOG4PERL_CONF
 	$__logger = get_logger('Daybo.Twitch.Retag');
 	$__logger->level($self->verbose ? $INFO : $WARN);
