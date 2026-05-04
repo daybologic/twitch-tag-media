@@ -800,7 +800,7 @@ sub run {
 	}
 
 	$self->_stats->{end_time} = time();
-	$__logger->info('Finished');
+	$__logger->info($self->__marker(100) . 'Finished');
 	$self->__printStats();
 
 	return EXIT_SUCCESS;
