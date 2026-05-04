@@ -166,7 +166,7 @@ sub __collect {
 				if (__parseFileName($filename)) {
 					push(@files, [ $relPath, $filename, $size, $ext ]);
 				} else {
-					$self->__log($self->__marker(0) . "Cannot parse filename structure: '$filename'");
+					$__logger->warn($self->__marker(0) . "Cannot parse filename structure: '$filename'");
 					$self->_stats->{unqualified_bytes} += $size;
 					$self->_stats->{unqualified_files}++;
 				}
@@ -768,7 +768,7 @@ sub run {
 			$timing = sprintf(', ETA: %s', __fmtDuration($eta))
 			    if (defined($eta));
 
-			$self->__log(sprintf("%sReading '%s'%s", $self->__marker($pct), $relPath, $timing));
+			$__logger->debug(sprintf("%sReading '%s'%s", $self->__marker($pct), $relPath, $timing));
 		}
 
 		$self->__tag(
