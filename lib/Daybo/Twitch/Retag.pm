@@ -925,7 +925,7 @@ sub __tagPerProcess {
 	    && ($existing->{year}    // '') eq $year
 	    && ($existing->{comment} // '') eq $comment
 	) {
-		$self->__log(sprintf("%sTags unchanged, skipping '%s'", $self->__marker($pct), $file));
+		$__logger->debug(sprintf("%sTags unchanged, skipping '%s'", $self->__marker($pct), $file));
 		return (0, 0);
 	}
 
