@@ -92,6 +92,11 @@ log4perl.appender.SCREEN.color.FATAL = bright_red
 END_LOG4PERL_CONF
 	$__logger = get_logger('Daybo.Twitch.Retag');
 	$__logger->level($self->verbose ? $DEBUG : $WARN);
+	$SIG{__DIE__} = sub { ## no critic (Variables::RequireLocalizedPunctuationVars)
+		local $SIG{__DIE__} = 'DEFAULT';
+		$__logger->error(@_) if defined($__logger) && !$EXCEPTIONS_BEING_CAUGHT;
+		die @_;
+	};
 	return;
 }
 
