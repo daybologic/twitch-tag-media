@@ -91,7 +91,7 @@ log4perl.appender.SCREEN.color.ERROR = red
 log4perl.appender.SCREEN.color.FATAL = bright_red
 END_LOG4PERL_CONF
 	$__logger = get_logger('Daybo.Twitch.Retag');
-	$__logger->level($self->verbose ? $DEBUG : $WARN);
+	$__logger->level($self->verbose ? $TRACE : $WARN);
 	$SIG{__DIE__} = sub { ## no critic (Variables::RequireLocalizedPunctuationVars)
 		local $SIG{__DIE__} = 'DEFAULT';
 		$__logger->error(@_) if defined($__logger) && !$EXCEPTIONS_BEING_CAUGHT;
@@ -421,11 +421,11 @@ sub __makeJobs {
 
 	my $count = Sys::CPU::cpu_count();
 	if ($count == 1) {
-		$__logger->debug($self->__marker(0) . 'not an SMP system');
+		$__logger->trace($self->__marker(0) . 'not an SMP system');
 		return $count;
 	}
 
-	$__logger->debug(sprintf('%s%d cores detected, max jobs set to %d (use --jobs to override)',
+	$__logger->trace(sprintf('%s%d cores detected, max jobs set to %d (use --jobs to override)',
 	    $self->__marker(0), $count, $count+1));
 
 	return ++$count;
@@ -667,12 +667,12 @@ sub __reapChild {
 				$self->_stats->{skipped_bytes} += $entry->{size};
 			}
 			$self->_stats->{tags_altered} += $changeCount;
-			$__logger->debug($self->__marker($pct) . sprintf(
+			$__logger->trace($self->__marker($pct) . sprintf(
 			    'PID %d reaped (modified=%d, tags altered=%d, %d still running)',
 			    $done_pid, $modified, $changeCount, scalar(@pids) - 1,
 			));
 		} else {
-			$__logger->debug($self->__marker($pct) . sprintf(
+			$__logger->trace($self->__marker($pct) . sprintf(
 			    'PID %d reaped (no result; likely interrupted)',
 			    $done_pid,
 			));
@@ -782,7 +782,7 @@ sub run {
 	}
 
 	if ($__interrupted && @pids) {
-		$__logger->debug($self->__marker(100) . sprintf(
+		$__logger->trace($self->__marker(100) . sprintf(
 		    'Interrupted; waiting for %d child%s to finish...',
 		    scalar(@pids), scalar(@pids) == 1 ? '' : 'ren',
 		));
