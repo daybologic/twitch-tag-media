@@ -57,6 +57,7 @@ unless `--recursive` is also given.
 | `--noop` | `-n` | Preview the tags which would be written without modifying any files |
 | `--recursive` | `-r` | Descend into subdirectories |
 | `--verbose` | `-v` | See verbose progress (with elapsed time and ETA), tag information, and a run summary |
+| `--stats` | | Print stats |
 | `--version` | `-V` | Print the version number and exit |
 
 ## JSON output mode

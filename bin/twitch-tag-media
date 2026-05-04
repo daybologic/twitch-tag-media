@@ -33,7 +33,7 @@
 
 Usage:
 
-	twitch-tag-media [--atime <S>] [--ctime <S>] [--delay <S>] [--force] [--help] [--jobs <N>] [--json] [--mtime <S>] [--noop] [--random] [--recursive] [--verbose] [--version] PATH [PATH...]
+	twitch-tag-media [--atime <S>] [--ctime <S>] [--delay <S>] [--force] [--help] [--jobs <N>] [--json] [--mtime <S>] [--noop] [--random] [--recursive] [--verbose] [--version] [--stats] PATH [PATH...]
 	twitch-tag-media [-d <S>] [-f] [-h] [-j <N>] [-J] [-n] [-R] [-r] [-v] [-V] PATH [PATH...]
 
 Add tags to media files downloaded from Twitch using yt-dlp
@@ -72,6 +72,7 @@ sub main {
 	my $recursive = 0;
 	my $verbose = 0;
 	my $version = 0;
+	my $stats = 0;
 
 	return EXIT_FAILURE unless (GetOptions(
 		'atime=i' => \$atime,
@@ -87,6 +88,7 @@ sub main {
 		'recursive|r' => \$recursive,
 		'verbose|v' => \$verbose,
 		'version|V' => \$version,
+		'stats' => \$stats,
 	));
 
 	if ($version) {
@@ -105,6 +107,7 @@ sub main {
 		random => $random,
 		recursive => $recursive,
 		verbose => $verbose,
+		stats => $stats,
 	);
 
 	if ($delay > 0 && $delay < 0.001) {

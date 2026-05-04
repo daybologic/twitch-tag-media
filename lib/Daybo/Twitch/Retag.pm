@@ -52,10 +52,8 @@ has [qw(atime ctime mtime)] => (is => 'ro', isa => 'Int', default => 0);
 
 has delay => (is => 'ro', isa => 'Num', default => 0);
 
-has [qw(force json noop random recursive)]
+has [qw(force json noop random recursive verbose stats)]
     => (is => 'ro', isa => 'Bool', default => 0);
-
-has verbose => (is => 'rw', isa => 'Bool', default => 0);
 
 has _stats => (is => 'rw', isa => 'HashRef', default => sub { return {}; });
 
@@ -76,7 +74,6 @@ since C<--json> implies C<--verbose>.
 
 sub BUILD {
 	my ($self) = @_;
-	$self->verbose(1) if ($self->json);
 	Log::Log4perl->init_once(\<<'END_LOG4PERL_CONF');
 log4perl.rootLogger = WARN, SCREEN
 log4perl.appender.SCREEN = Log::Log4perl::Appender::ScreenColoredLevels
@@ -91,7 +88,7 @@ log4perl.appender.SCREEN.color.ERROR = red
 log4perl.appender.SCREEN.color.FATAL = bright_red
 END_LOG4PERL_CONF
 	$__logger = get_logger('Daybo.Twitch.Retag');
-	$__logger->level($self->verbose ? $TRACE : $WARN);
+	$__logger->level($self->verbose ? $DEBUG : $INFO);
 	$SIG{__DIE__} = sub { ## no critic (Variables::RequireLocalizedPunctuationVars)
 		local $SIG{__DIE__} = 'DEFAULT';
 		$__logger->error(@_) if defined($__logger) && !$EXCEPTIONS_BEING_CAUGHT;
@@ -166,7 +163,7 @@ sub __collect {
 				if (__parseFileName($filename)) {
 					push(@files, [ $relPath, $filename, $size, $ext ]);
 				} else {
-					$__logger->warn($self->__marker(0) . "Cannot parse filename structure: '$filename'");
+					$__logger->warn($self->__marker(0) . "Cannot parse filename structure: '$relPath'");
 					$self->_stats->{unqualified_bytes} += $size;
 					$self->_stats->{unqualified_files}++;
 				}
@@ -581,10 +578,13 @@ Emits a run summary via C<__log> after all files have been processed.
 In JSON mode, outputs a single C<stats> event object; otherwise prints a
 human-readable multi-line summary.  No return value.
 
+If the --stats flag was not used, this method is a no-op.
+
 =cut
 
 sub __printStats {
 	my ($self) = @_;
+	return unless ($self->stats);
 
 	my $s = $self->_stats;
 	my $elapsed = $s->{end_time} - $s->{start_time};
@@ -720,7 +720,7 @@ sub run {
 				$self->_stats->{unqualified_files}++;
 			}
 		} elsif (-d $path) {
-			$self->__log($self->__marker(0) . "Walking '$path'");
+			$__logger->debug($self->__marker(0) . "Walking '$path'");
 			my $sub = $self->__collect($path);
 			push(@files, @{$sub}) if ref($sub);
 		} else {
