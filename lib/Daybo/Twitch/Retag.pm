@@ -141,7 +141,7 @@ sub __collect {
 
 	my $dir = IO::Dir->new($dirname);
 	unless ($dir) {
-		$self->__log("Cannot open '$dirname': $ERRNO");
+		$__logger->error("Cannot open '$dirname': $ERRNO");
 		return -1;
 	}
 
@@ -800,6 +800,7 @@ sub run {
 	}
 
 	$self->_stats->{end_time} = time();
+	$__logger->info('Finished');
 	$self->__printStats();
 
 	return EXIT_SUCCESS;
