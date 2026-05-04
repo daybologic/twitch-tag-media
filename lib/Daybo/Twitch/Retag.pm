@@ -35,6 +35,7 @@ use IO::Dir;
 use IO::File;
 use JSON::PP qw(encode_json);
 use List::Util qw(shuffle);
+use Log::Log4perl qw(get_logger :levels);
 use Sys::CPU qw();
 use Time::HiRes qw(sleep time);
 use Moose;
@@ -64,6 +65,7 @@ has _tagWrap => (is => 'ro', isa => 'Daybo::Twitch::TagWrap', default => sub { D
 
 my @pids;
 my $__interrupted = 0;
+my $__logger;
 
 =item C<BUILD()>
 
@@ -75,6 +77,15 @@ since C<--json> implies C<--verbose>.
 sub BUILD {
 	my ($self) = @_;
 	$self->verbose(1) if ($self->json);
+	Log::Log4perl->init_once(\<<'END_LOG4PERL_CONF');
+log4perl.rootLogger = WARN, Screen
+log4perl.appender.Screen = Log::Log4perl::Appender::Screen
+log4perl.appender.Screen.stderr = 0
+log4perl.appender.Screen.layout = Log::Log4perl::Layout::PatternLayout
+log4perl.appender.Screen.layout.ConversionPattern = %m%n
+END_LOG4PERL_CONF
+	$__logger = get_logger('Daybo.Twitch.Retag');
+	$__logger->level($self->verbose ? $INFO : $WARN);
 	return;
 }
 
@@ -263,11 +274,11 @@ sub __handleSignal {
 	++$__interrupted;
 	my $count = scalar(@pids);
 	if ($__interrupted == 1) {
-		warn sprintf("Caught SIG%s; %d child%s will finish current retag before stopping...\n",
-		    $sig, $count, $count == 1 ? '' : 'ren');
+		$__logger->warn(sprintf("Caught SIG%s; %d child%s will finish current retag before stopping...",
+		    $sig, $count, $count == 1 ? '' : 'ren'));
 	} else {
-		warn sprintf("Caught SIG%s again; terminating %d child%s immediately...\n",
-		    $sig, $count, $count == 1 ? '' : 'ren');
+		$__logger->warn(sprintf("Caught SIG%s again; terminating %d child%s immediately...",
+		    $sig, $count, $count == 1 ? '' : 'ren'));
 		kill($sig, $_->{pid}) for @pids;
 	}
 	return;
@@ -297,8 +308,9 @@ sub __initStats {
 
 =item C<__log($msg)>
 
-Prints C<$msg> to stdout when C<--verbose> is active.  If C<$msg> is a
-hash ref it is emitted as JSON regardless of the C<--json> flag; a plain
+Logs C<$msg> at INFO level via L<Log::Log4perl>.  When C<--verbose> is
+active the INFO threshold is enabled; otherwise INFO messages are
+suppressed.  If C<$msg> is a hash ref it is emitted as JSON; a plain
 string is wrapped in a JSON object when C<--json> is set.  No return
 value.
 
@@ -306,14 +318,12 @@ value.
 
 sub __log {
 	my ($self, $msg) = @_;
-	if ($self->verbose) {
-		if (ref($msg) eq 'HASH') {
-			print encode_json($msg) . "\n";
-		} elsif ($self->json) {
-			print encode_json({message => $msg}) . "\n";
-		} else {
-			print "$msg\n";
-		}
+	if (ref($msg) eq 'HASH') {
+		$__logger->info(encode_json($msg));
+	} elsif ($self->json) {
+		$__logger->info(encode_json({message => $msg}));
+	} else {
+		$__logger->info($msg);
 	}
 	return;
 }
@@ -703,7 +713,7 @@ sub run {
 			my $sub = $self->__collect($path);
 			push(@files, @{$sub}) if ref($sub);
 		} else {
-			warn "No such file or directory: '$path'\n";
+			$__logger->warn("No such file or directory: '$path'");
 		}
 	}
 
