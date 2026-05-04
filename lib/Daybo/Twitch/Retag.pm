@@ -421,11 +421,11 @@ sub __makeJobs {
 
 	my $count = Sys::CPU::cpu_count();
 	if ($count == 1) {
-		$__logger->trace($self->__marker(0) . 'not an SMP system');
+		$__logger->debug($self->__marker(0) . 'not an SMP system');
 		return $count;
 	}
 
-	$__logger->trace(sprintf('%s%d cores detected, max jobs set to %d (use --jobs to override)',
+	$__logger->debug(sprintf('%s%d cores detected, max jobs set to %d (use --jobs to override)',
 	    $self->__marker(0), $count, $count+1));
 
 	return ++$count;
