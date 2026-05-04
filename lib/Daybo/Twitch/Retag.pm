@@ -79,7 +79,7 @@ log4perl.rootLogger = WARN, SCREEN
 log4perl.appender.SCREEN = Log::Log4perl::Appender::ScreenColoredLevels
 log4perl.appender.SCREEN.stderr = 0
 log4perl.appender.SCREEN.layout = Log::Log4perl::Layout::PatternLayout
-log4perl.appender.SCREEN.layout.ConversionPattern = %m%n
+log4perl.appender.SCREEN.layout.ConversionPattern = [%X{stamp} %X{pct}] %m%n
 log4perl.appender.SCREEN.color.TRACE = white
 log4perl.appender.SCREEN.color.DEBUG = bright_blue
 log4perl.appender.SCREEN.color.INFO  = bright_white
@@ -89,6 +89,8 @@ log4perl.appender.SCREEN.color.FATAL = bright_red
 END_LOG4PERL_CONF
 	$__logger = get_logger('Daybo.Twitch.Retag');
 	$__logger->level($self->verbose ? $DEBUG : $INFO);
+	Log::Log4perl::MDC->put('stamp', '00:00:00.000');
+	Log::Log4perl::MDC->put('pct',   '  0.00%');
 	$SIG{__DIE__} = sub { ## no critic (Variables::RequireLocalizedPunctuationVars)
 		local $SIG{__DIE__} = 'DEFAULT';
 		$__logger->error(@_) if defined($__logger) && !$EXCEPTIONS_BEING_CAUGHT;
@@ -430,14 +432,18 @@ sub __makeJobs {
 
 =item C<__marker($pct)>
 
-Returns the C<[HH:MM:SS PCT%] > prefix string (including trailing space)
-used at the start of every plain-text log marker.
+Updates the Log4perl MDC keys C<stamp> (elapsed C<HH:MM:SS.mmm>) and
+C<pct> (formatted percentage) so the C<ConversionPattern> can emit them
+as the log prefix.  Returns an empty string so existing call sites that
+concatenate the return value remain valid.
 
 =cut
 
 sub __marker {
 	my ($self, $pct) = @_;
-	return sprintf('[%s %6.2f%%] ', $self->__stamp(), $pct);
+	Log::Log4perl::MDC->put('stamp', $self->__stamp());
+	Log::Log4perl::MDC->put('pct',   sprintf('%6.2f%%', $pct));
+	return '';
 }
 
 =item C<__normalizeArtist($artistRaw)>
