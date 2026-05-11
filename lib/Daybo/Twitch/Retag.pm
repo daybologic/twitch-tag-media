@@ -833,7 +833,7 @@ sub run {
 				elapsed_s => $elapsed + 0,
 			);
 			$progress{eta_s} = $eta + 0 if (defined($eta));
-			$self->__log($INFO, \%progress);
+			$self->__log($DEBUG, \%progress);
 		} else {
 			my $timing = '';
 			$timing = sprintf(', ETA: %s', __fmtDuration($eta))
