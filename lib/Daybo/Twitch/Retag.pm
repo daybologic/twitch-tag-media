@@ -965,7 +965,7 @@ sub __tagPerProcess {
 	}
 
 	if ($self->json) {
-		$self->__log($INFO, {
+		$self->__log($DEBUG, {
 			process => {
 				type => 'tag',
 				pct => $pct,
