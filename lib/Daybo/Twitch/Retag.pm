@@ -52,8 +52,10 @@ has [qw(atime ctime mtime)] => (is => 'ro', isa => 'Int', default => 0);
 
 has delay => (is => 'ro', isa => 'Num', default => 0);
 
-has [qw(force json noop random recursive verbose stats)]
+has [qw(force json noop random recursive stats)]
     => (is => 'ro', isa => 'Bool', default => 0);
+
+has log_level => (is => 'ro', isa => 'Str', default => 'INFO');
 
 has _stats => (is => 'rw', isa => 'HashRef', default => sub { return {}; });
 
@@ -67,8 +69,10 @@ my $__logger;
 
 =item C<BUILD()>
 
-Moose post-construction hook.  Sets C<verbose> if C<json> is active,
-since C<--json> implies C<--verbose>.
+Moose post-construction hook.  Initializes Log4perl and sets the
+threshold of the C<Daybo.Twitch.Retag> logger from
+L</log_level>, which may be any Log4perl level name (C<TRACE>,
+C<DEBUG>, C<INFO>, C<WARN>, C<ERROR>, C<FATAL>).
 
 =cut
 
@@ -88,7 +92,7 @@ log4perl.appender.SCREEN.color.ERROR = red
 log4perl.appender.SCREEN.color.FATAL = bright_red
 END_LOG4PERL_CONF
 	$__logger = get_logger('Daybo.Twitch.Retag');
-	$__logger->level($self->verbose ? $DEBUG : $INFO);
+	$__logger->level(Log::Log4perl::Level::to_priority(uc($self->log_level)));
 	Log::Log4perl::MDC->put('stamp', '00:00:00.000');
 	Log::Log4perl::MDC->put('pct',   '  0.00%');
 	$SIG{__DIE__} = sub { ## no critic (Variables::RequireLocalizedPunctuationVars)
@@ -318,9 +322,10 @@ sub __initStats {
 
 =item C<__log($msg)>
 
-Logs C<$msg> at INFO level via L<Log::Log4perl>.  When C<--verbose> is
-active the INFO threshold is enabled; otherwise INFO messages are
-suppressed.  If C<$msg> is a hash ref it is emitted as JSON; a plain
+Logs C<$msg> at INFO level via L<Log::Log4perl>.  The message is
+filtered by the logger threshold set from L</log_level> (default
+C<INFO>); raising the threshold to C<WARN> or higher suppresses these
+messages.  If C<$msg> is a hash ref it is emitted as JSON; a plain
 string is wrapped in a JSON object when C<--json> is set.  No return
 value.
 
@@ -967,8 +972,8 @@ Prints a usage summary to stdout and returns 1.
 
 sub usage {
 	printf("twitch-tag-media %s usage:\n", $VERSION);
-	print("twitch-tag-media [--atime <S>] [--ctime <S>] [--delay <S>] [--force] [--help] [--jobs <N>] [--json] [--mtime <S>] [--noop] [--random] [--recursive] [--verbose] [--version] PATH [PATH...]\n");
-	print("twitch-tag-media [-d <S>] [-f] [-h] [-j <N>] [-J] [-n] [-R] [-r] [-v] [-V] PATH [PATH...]\n\n");
+	print("twitch-tag-media [--atime <S>] [--ctime <S>] [--delay <S>] [--force] [--help] [--jobs <N>] [--json] [--log-level <LEVEL>] [--mtime <S>] [--noop] [--random] [--recursive] [--version] PATH [PATH...]\n");
+	print("twitch-tag-media [-d <S>] [-f] [-h] [-j <N>] [-J] [-L <LEVEL>] [-n] [-R] [-r] [-V] PATH [PATH...]\n\n");
 	printf("See https://%s for more information.\n", $URL);
 	return 1;
 }
