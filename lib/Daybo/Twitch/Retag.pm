@@ -983,7 +983,10 @@ sub __tagPerProcess {
 	    && ($existing->{year}    // '') eq $year
 	    && ($existing->{comment} // '') eq $comment
 	) {
-		$self->__log($DEBUG, sprintf("%sTags unchanged, skipping '%s'", $self->__marker($pct), $file));
+		$self->__log($DEBUG, $self->json ? {
+			process => { type => 'skipped', pct => $pct, pid => $PID },
+			file    => $file,
+		} : sprintf("%sTags unchanged, skipping '%s'", $self->__marker($pct), $file));
 		return (0, 0);
 	}
 
