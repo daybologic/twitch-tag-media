@@ -310,10 +310,20 @@ sub __handleSignal {
 	++$__interrupted;
 	my $count = scalar(@pids);
 	if ($__interrupted == 1) {
-		$self->__log($WARN, sprintf("Caught SIG%s; %d child%s will finish current retag before stopping...",
+		$self->__log($WARN, $self->json ? {
+			process  => { type => 'signal' },
+			signal   => $sig,
+			action   => 'draining',
+			children => $count,
+		} : sprintf("Caught SIG%s; %d child%s will finish current retag before stopping...",
 		    $sig, $count, $count == 1 ? '' : 'ren'));
 	} else {
-		$self->__log($WARN, sprintf("Caught SIG%s again; terminating %d child%s immediately...",
+		$self->__log($WARN, $self->json ? {
+			process  => { type => 'signal' },
+			signal   => $sig,
+			action   => 'terminating',
+			children => $count,
+		} : sprintf("Caught SIG%s again; terminating %d child%s immediately...",
 		    $sig, $count, $count == 1 ? '' : 'ren'));
 		kill($sig, $_->{pid}) for @pids;
 	}
