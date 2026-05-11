@@ -716,12 +716,20 @@ sub __reapChild {
 				$self->_stats->{skipped_bytes} += $entry->{size};
 			}
 			$self->_stats->{tags_altered} += $changeCount;
-			$self->__log($TRACE, $self->__marker($pct) . sprintf(
+			$self->__log($TRACE, $self->json ? {
+				process => { type => 'reaped', pid => $done_pid, pct => $pct },
+				modified      => $modified + 0,
+				tags_altered  => $changeCount + 0,
+				still_running => scalar(@pids) - 1,
+			} : $self->__marker($pct) . sprintf(
 			    'PID %d reaped (modified=%d, tags altered=%d, %d still running)',
 			    $done_pid, $modified, $changeCount, scalar(@pids) - 1,
 			));
 		} else {
-			$self->__log($TRACE, $self->__marker($pct) . sprintf(
+			$self->__log($TRACE, $self->json ? {
+				process => { type => 'reaped', pid => $done_pid, pct => $pct },
+				interrupted => 1,
+			} : $self->__marker($pct) . sprintf(
 			    'PID %d reaped (no result; likely interrupted)',
 			    $done_pid,
 			));
