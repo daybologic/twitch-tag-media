@@ -186,7 +186,11 @@ sub __collect {
 				if (__parseFileName($filename)) {
 					push(@files, [ $relPath, $filename, $size, $ext ]);
 				} else {
-					$self->__log($WARN, $self->__marker(0) . "Cannot parse filename structure: '$relPath'");
+					$self->__log($WARN, $self->json ? {
+						process => { type => 'unqualified' },
+						reason  => 'unparseable filename',
+						file    => $relPath,
+					} : $self->__marker(0) . "Cannot parse filename structure: '$relPath'");
 					$self->_stats->{unqualified_bytes} += $size;
 					$self->_stats->{unqualified_files}++;
 				}
