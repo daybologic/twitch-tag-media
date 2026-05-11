@@ -1021,8 +1021,17 @@ sub __tagPerProcess {
 	$backendForExt->deleteTags($file);
 	$backendForExt->writeTags($file, $artist, $album, $track, $year, $comment);
 
-	chown(-1, $gid, $file) == 1
-	    or die("Cannot restore GID $gid on '$file': $ERRNO");
+	unless (chown(-1, $gid, $file) == 1) {
+		$self->__log($ERROR, $self->json ? {
+			process => { type => 'error', pid => $PID, pct => $pct },
+			error   => 'chown_failed',
+			gid     => $gid + 0,
+			file    => $file,
+			reason  => "$ERRNO",
+		} : "Cannot restore GID $gid on '$file': $ERRNO");
+		local $SIG{__DIE__} = 'DEFAULT'; ## no critic (Variables::RequireLocalizedPunctuationVars)
+		die("Cannot restore GID $gid on '$file': $ERRNO");
+	}
 
 	return (1, $changeCount);
 }
