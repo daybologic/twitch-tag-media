@@ -109,7 +109,7 @@ sub main {
 		delay => $delay,
 		force => $force,
 		json => $json,
-		log_level => $logLevel,
+		logLevel => $logLevel,
 		mtime => $mtime,
 		noop => $noop,
 		random => $random,

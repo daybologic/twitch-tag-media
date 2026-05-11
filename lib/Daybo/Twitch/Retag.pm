@@ -55,7 +55,7 @@ has delay => (is => 'ro', isa => 'Num', default => 0);
 has [qw(force json noop random recursive stats)]
     => (is => 'ro', isa => 'Bool', default => 0);
 
-has log_level => (is => 'ro', isa => 'Str', default => 'INFO');
+has logLevel => (is => 'ro', isa => 'Str', default => 'INFO');
 
 has _stats => (is => 'rw', isa => 'HashRef', default => sub { return {}; });
 
@@ -74,7 +74,7 @@ appender configurations: in JSON mode, a plain C<Screen> appender whose
 pattern is bare C<%m%n>, so each line of stdout is a self-contained JSON
 object; in text mode, the colored C<ScreenColoredLevels> appender with
 the full decorated pattern.  Sets the threshold of the
-C<Daybo.Twitch.Retag> logger from L</log_level>.  Installs a
+C<Daybo.Twitch.Retag> logger from L</logLevel>.  Installs a
 C<$SIG{__DIE__}> handler that routes uncaught exceptions through
 L</__log> at the C<ERROR> level.
 
@@ -109,7 +109,7 @@ END_TEXT_CONF
 	Log::Log4perl->init_once(\$conf);
 
 	$__logger = get_logger('Daybo.Twitch.Retag');
-	$__logger->level(Log::Log4perl::Level::to_priority(uc($self->log_level)));
+	$__logger->level(Log::Log4perl::Level::to_priority(uc($self->logLevel)));
 	Log::Log4perl::MDC->put('stamp', '00:00:00.000');
 	Log::Log4perl::MDC->put('pct',   '  0.00%');
 	$SIG{__DIE__} = sub { ## no critic (Variables::RequireLocalizedPunctuationVars)
