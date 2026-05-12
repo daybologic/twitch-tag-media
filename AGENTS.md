@@ -1,137 +1,183 @@
-# CLAUDE.md
+# Codex CLI Instructions
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Use this file as the operating guide for Codex CLI when working in this repository.
+
+## Personal Coding Preferences
+
+- Use tabs rather than spaces in code snippets.
+- For Perl scripts, always use `use English qw(-no_match_vars);`.
+- Ask before adding new production dependencies.
 
 ## Project Overview
 
-`twitch-tag-media` is a Perl utility that reads Twitch stream recording filenames (downloaded via yt-dlp) and writes tags to MP3 (ID3v1/v2 via `id3v2`) and MP4 (metadata via `ffmpeg`) files. It processes files concurrently via forking.
+`twitch-tag-media` is a Perl utility that reads Twitch stream recording filenames downloaded via `yt-dlp` and writes tags to media files:
 
-## Build & Test Commands
+- MP3 files: ID3v1/v2 tags via `id3v2`.
+- MP4 files: metadata via `ffmpeg`.
+
+The utility processes files concurrently by forking.
+
+## Build And Test Commands
 
 ```sh
 perl Makefile.PL   # Generate Makefile
 make               # Build
-make test          # Run tests (parallelised by Sys::CPU)
+make test          # Run tests, parallelised by Sys::CPU
 make install       # Install
 ```
 
 Debian packaging:
+
 ```sh
 dpkg-buildpackage -b
 ```
 
 ## Architecture
 
-**Entry point:** `bin/twitch-tag-media` — instantiates `Daybo::Twitch::Retag` and calls `->run($dir)`.
+The entry point is `bin/twitch-tag-media`. It instantiates `Daybo::Twitch::Retag` and calls `->run($dir)`.
 
-**Single module:** `lib/Daybo/Twitch/Retag.pm` (Moose-based) contains all logic:
+The main module is `lib/Daybo/Twitch/Retag.pm`, a Moose-based module containing the core logic:
 
-- `run($dirname)` — recursively walks directories, skips `@eaDir`, forks a child for each supported media file found.
-- `__tag(...)` — forks a child process; parent collects PIDs, child calls `__tagPerProcess` then exits.
-- `__tagPerProcess(...)` — reads existing tags, writes new ones via the appropriate backend (MP3: `id3v2`; MP4: `ffmpeg`).
-- `__parseFileName($filename)` — extracts artist, album (`"$artist on Twitch"`), track, and year from the yt-dlp filename convention: `ArtistHandle (type) YYYY-MM-DD HH_MM-StreamID.mp3`. Contains hardcoded artist handle→display name mappings.
-- `__acceptableDirName($name)` — returns false for `@eaDir` (Synology index dirs).
+- `run($dirname)` recursively walks directories, skips `@eaDir`, and forks a child for each supported media file.
+- `__tag(...)` forks a child process. The parent collects PIDs; the child calls `__tagPerProcess(...)` and exits.
+- `__tagPerProcess(...)` reads existing tags and writes new ones through the correct backend.
+- `__parseFileName($filename)` extracts artist, album, track, and year from the `yt-dlp` filename convention. It also contains hardcoded artist handle-to-display-name mappings.
+- `__acceptableDirName($name)` returns false for `@eaDir` Synology index directories.
 
-## Coding Style
+Expected album names are generated as `"$artist on Twitch"`.
 
-All `sub` definitions must use cuddled braces — opening brace on the same line as `sub`:
+## Filename Convention
 
-```perl
-sub foo {   # correct
-sub foo{    # wrong
+Expected input filename pattern:
+
+```text
+ArtistHandle (type) YYYY-MM-DD HH_MM-StreamID.mp3
 ```
 
-Subroutines prefixed with `__` are private (internal to the module). Subroutines without that prefix (`run`, `usage`) are public and form the API called from `bin/twitch-tag-media`.
+Example:
 
-All subroutines must be in lexical (case-insensitive alphabetical) order, ignoring the `__` prefix when determining position. This applies to new subs and any time existing subs are renamed.
-Calls to subroutines must always include parentheses, so they are visually distinct from access to Moose attributes.
+```text
+1stdegreeproductions (live) 2021-10-18 11_05-40110166187.mp3
+```
 
-Every subroutine must have a Pod documentation block immediately preceding it (between the previous `=cut` and the `sub` keyword). This applies to all methods, public and private alike.
+`parseFileName` strips `-trim`, `-tempo`, and `-untempo` suffixes from track names. It normalises artist handles by removing `Official`, `Music`, and `dj`; replacing `_` with a space; trimming whitespace; and applying specific handle-to-display-name mappings.
 
-Always `use English qw(-no_match_vars)` and refer to special variables by their English names (e.g. `$EVAL_ERROR` not `$@`, `$ERRNO` not `$!`, `$CHILD_ERROR` not `$?`).
+## Perl Coding Style
+
+- Use cuddled braces for all `sub` definitions: `sub foo {`.
+- Do not write `sub foo{`.
+- Subroutines prefixed with `__` are private to the module.
+- Subroutines without `__`, such as `run` and `usage`, are public API used by `bin/twitch-tag-media`.
+- Keep all subroutines in lexical, case-insensitive alphabetical order.
+- Ignore the `__` prefix when determining subroutine order.
+- Apply the ordering rule when adding or renaming subroutines.
+- Always include parentheses when calling subroutines, so method calls remain visually distinct from Moose attribute access.
+- Every subroutine, public or private, must have a Pod documentation block immediately preceding it, between the previous `=cut` and the `sub` keyword.
+- Always use `use English qw(-no_match_vars);`.
+- Use English special variables, such as `$EVAL_ERROR`, `$ERRNO`, and `$CHILD_ERROR`, instead of `$@`, `$!`, and `$?`.
 
 ## Code Quality Rules
 
-A pre-commit hook (`maint/trap-goose-corruption.sh`, configured in `.pre-commit-config.yaml`) rejects commits if `lib/` contains:
-- Markdown fences (` ``` `)
-- File path headers (`### /path/file`)
-- Line-number prefixes (`123: `)
+A pre-commit hook, `maint/trap-goose-corruption.sh`, configured in `.pre-commit-config.yaml`, rejects commits if files under `lib/` contain:
 
-**Never rewrite entire files.** Make minimal, targeted edits verifiable via `git diff`. Do not introduce formatting changes outside the scope of a requested change.
+- Markdown fences: ` ``` `
+- File path headers, such as `### /path/file`
+- Line-number prefixes, such as `123: `
 
-After any modification, run `git diff` and confirm only the intended lines changed. Do not commit automatically unless explicitly instructed.
+Do not rewrite entire files unless the requested change explicitly requires it. Make minimal, targeted edits that are easy to verify with `git diff`.
+
+After any modification:
+
+- Run `git diff`.
+- Confirm only the intended lines changed.
+- Do not commit automatically unless explicitly instructed.
 
 ## Commit Emoji Conventions
 
-Follow Gitmoji (https://gitmoji.dev) for commit message prefixes. Notable conventions used in this project:
-- ⚰️ — removing dead code
-- ➕ — adding a dependency
+Follow Gitmoji for commit message prefixes. Notable conventions used in this project:
 
-## Unit Tests (`t/*.t`)
+- `⚰️` for removing dead code.
+- `➕` for adding a dependency.
 
-Unit tests use `Test::Module::Runnable` (vendored under `externals/libtest-module-runnable-perl/`), a Moose-based framework that auto-discovers and runs all methods whose names match `^test`.
+## Unit Tests
 
-**Structure of each test file:**
+Tests live in `t/*.t` and use `Test::Module::Runnable`, vendored under `externals/libtest-module-runnable-perl/`. The framework auto-discovers and runs all methods whose names match `^test`.
 
 Each `.t` file defines two packages:
 
-1. A test class (e.g. `MP3_deleteTags_Tests`) that `extends 'Test::Module::Runnable'` and contains:
-   - `setUp` — instantiates the system under test into `$self->sut(...)`. Must return `EXIT_SUCCESS`.
-   - One or more `test*` methods — each calls `plan tests => N`, exercises `$self->sut`, and returns `EXIT_SUCCESS`.
+1. A test class, such as `MP3_deleteTags_Tests`, that extends `Test::Module::Runnable`.
+2. `package main`, ending with the one-liner `exit(ClassName->new->run)`.
 
-2. `package main` — a one-liner: `exit(ClassName->new->run)`.
+The test class contains:
 
-All `t/*.t` files must be marked executable (`chmod +x`). New test files must have the executable bit set before committing.
+- `setUp`, which instantiates the system under test into `$self->sut(...)` and returns `EXIT_SUCCESS`.
+- One or more `test*` methods. Each test method calls `plan tests => N`, exercises `$self->sut`, and returns `EXIT_SUCCESS`.
 
-**Mocking:**
+All `t/*.t` files must be executable. Set the executable bit on new test files before committing.
 
-External calls (e.g. `_system` on the backend base class) are mocked via `$self->mock($package, $method)`, which uses `Test::MockModule` internally and records all calls. Use `$self->mockCallsWithObject($package, $method)` to retrieve the call log as an arrayref of arrayrefs (each including `$self` as the first element). Use `$self->mockCalls(...)` when the object reference is not needed. Assertions are made with `Test::Deep::cmp_deeply`.
+## Mocking
 
-**Mocking `CORE::open` (for seam methods that wrap `open`):**
+External processes, including `id3v2`, `ffmpeg`, and `mkvpropedit`, must never be invoked by unit tests. Mock them at the `_system` boundary.
 
-Perl built-ins cannot be mocked with `Test::MockModule`. To test a seam method that calls bare `open()`, override `CORE::GLOBAL::open` in a `BEGIN` block so the override is in place before any module loads:
+Mock external calls, such as `_system` on the backend base class, with `$self->mock($package, $method)`. This uses `Test::MockModule` internally and records all calls.
+
+Use:
+
+- `$self->mockCallsWithObject($package, $method)` to retrieve calls as an arrayref of arrayrefs, including `$self` as the first element.
+- `$self->mockCalls($package, $method)` when the object reference is not needed.
+- `Test::Deep::cmp_deeply` for deep assertions.
+
+## Mocking CORE::open
+
+Perl built-ins cannot be mocked with `Test::MockModule`. To test a seam method that calls bare `open()`, override `CORE::GLOBAL::open` in a `BEGIN` block so the override exists before any module loads:
 
 ```perl
 our $mockOpen;
 
 BEGIN {
-    *CORE::GLOBAL::open = sub (*;$@) {
-        if (defined $Package_Tests::mockOpen) {
-            return $Package_Tests::mockOpen->(@_);
-        }
-        return CORE::open($_[0])                       if @_ == 1;
-        return CORE::open($_[0], $_[1])                if @_ == 2;
-        return CORE::open($_[0], $_[1], @_[2 .. $#_]);
-    };
+	*CORE::GLOBAL::open = sub (*;$@) {
+		if (defined $Package_Tests::mockOpen) {
+			return $Package_Tests::mockOpen->(@_);
+		}
+		return CORE::open($_[0])                       if @_ == 1;
+		return CORE::open($_[0], $_[1])                if @_ == 2;
+		return CORE::open($_[0], $_[1], @_[2 .. $#_]);
+	};
 }
 ```
 
-Key rules:
-- The seam method in production code **must** call bare `open(...)`, not `CORE::open(...)`. `CORE::open` explicitly bypasses `CORE::GLOBAL::open` and will never be intercepted.
-- The `(*;$@)` prototype is required. Without it, bareword filehandles used by system modules (e.g. `Cwd`) break under `use strict` when the fallback path runs.
-- Do **not** use `goto &CORE::open` for the fallback — it does not correctly pass bareword filehandle arguments on this platform. Dispatch by arity (`@_ == 1/2/3+`) instead.
-- Use `our $mockOpen` (package variable) with `local $mockOpen = sub { ... }` inside each test method for automatic restoration. Reference it via the full package name (`$Package_Tests::mockOpen`) inside the `BEGIN` closure.
-- In the success mock, `$_[0] = $fake_fh` sets the caller's filehandle variable via alias. This works because `@_` elements are aliases.
+Rules for this pattern:
+
+- Production seam methods must call bare `open(...)`, not `CORE::open(...)`.
+- `CORE::open(...)` bypasses `CORE::GLOBAL::open` and cannot be intercepted.
+- The `(*;$@)` prototype is required. Without it, bareword filehandles used by system modules, such as `Cwd`, break under `use strict` when the fallback path runs.
+- Do not use `goto &CORE::open` for the fallback. It does not correctly pass bareword filehandle arguments on this platform.
+- Dispatch the fallback by arity: `@_ == 1`, `@_ == 2`, or `3+`.
+- Use `our $mockOpen` as a package variable.
+- Use `local $mockOpen = sub { ... }` inside each test method for automatic restoration.
+- Reference the mock via the full package name, such as `$Package_Tests::mockOpen`, inside the `BEGIN` closure.
+- In a success mock, `$_[0] = $fake_fh` sets the caller's filehandle variable by alias.
 - `tearDown` should `undef $mockOpen` as a safety net.
 
-**Test data:**
+## Test Data
 
-Use `$self->uniqueStr()` to generate unique, predictable alphanumeric strings for filenames and other inputs. Do not hardcode values where `uniqueStr` can be used instead.  If the unique value must be an integer, use `$self->unique()` instead.
+Use `$self->uniqueStr()` to generate unique, predictable alphanumeric strings for filenames and other inputs. Do not hardcode values where `uniqueStr()` can be used instead.
 
-**Philosophy:**
+If the unique value must be an integer, use `$self->unique()`.
 
-Tests are unit-level: each file covers one method of one class. External processes (`id3v2`, `ffmpeg`, `mkvpropedit`) are never actually invoked — they are always mocked at the `_system` boundary. The test name mirrors the file being tested: `MP3_deleteTags.t` tests `Backend::MP3::deleteTags`.  If the method name is prefixed with any number of underscores (underbars), that is *not* reflected in the name within the filename for the test suite.
+## Test Philosophy
 
-Our ultimate aim is to reach unit test code-coverage of 100% of all possible code paths -- one step at a time.
-Test names are typically `sub testSuccess` for a successful case and `sub testFailure` for an error condition.
-There may be multiple success cases and multiple failure conditions which need to be tested per-method.
+Tests are unit-level. Each file covers one method of one class.
 
-## Filename Convention
+The test filename mirrors the production method being tested. For example, `MP3_deleteTags.t` tests `Backend::MP3::deleteTags`.
 
-Expected input filename pattern:
-```
-ArtistHandle (type) YYYY-MM-DD HH_MM-StreamID.mp3
-```
-Example: `1stdegreeproductions (live) 2021-10-18 11_05-40110166187.mp3`
+If the method name is prefixed with any number of underscores, do not include those underscores in the test filename.
 
-`parseFileName` strips `-trim`, `-tempo`, `-untempo` suffixes from the track name and normalises artist handles (removes "Official"/"Music"/"dj", replaces `_` with space, trims whitespace, and maps specific handles to display names).
+The long-term goal is 100% unit test coverage of all possible code paths, one step at a time.
+
+Typical test names:
+
+- `sub testSuccess` for a successful case.
+- `sub testFailure` for an error condition.
+
+There may be multiple success cases and multiple failure conditions per method.
