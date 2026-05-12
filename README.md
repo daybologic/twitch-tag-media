@@ -36,8 +36,8 @@ Any feedback on this is welcome.  The author is happy to make reasonable adjustm
 ## Usage
 
 ```
-twitch-tag-media [--atime <S>] [--ctime <S>] [--force] [--help] [--jobs <N>] [--json] [--mtime <S>] [--noop] [--random] [--recursive] [--verbose] [--version] PATH [PATH...]
-twitch-tag-media [-f] [-h] [-j <N>] [-J] [-n] [-R] [-r] [-v] [-V] PATH [PATH...]
+twitch-tag-media [--atime <S>] [--ctime <S>] [--force] [--help] [--jobs <N>] [--json] [--log-level <LEVEL>] [--mtime <S>] [--noop] [--random] [--recursive] [--version] PATH [PATH...]
+twitch-tag-media [-f] [-h] [-j <N>] [-J] [-L <LEVEL>] [-n] [-R] [-r] [-V] PATH [PATH...]
 ```
 
 Add MP3/MP4 tags to media files downloaded from Twitch using yt-dlp.  Each
@@ -56,7 +56,8 @@ unless `--recursive` is also given.
 | `--mtime <S>` | | Skip files whose mtime is too recent: values ≤ 604800 are a maximum file age in seconds; larger values are an absolute Unix timestamp cutoff.  Not overridden by `--force` |
 | `--noop` | `-n` | Preview the tags which would be written without modifying any files |
 | `--recursive` | `-r` | Descend into subdirectories |
-| `--verbose` | `-v` | See verbose progress (with elapsed time and ETA), tag information, and a run summary |
+| `--log-level <LEVEL>` | `-L <LEVEL>` | Set the Log4perl threshold for diagnostic output: `TRACE`, `DEBUG`, `INFO` (default), `WARN`, `ERROR`, or `FATAL` |
+| `--stats` | | Print stats |
 | `--version` | `-V` | Print the version number and exit |
 
 ## JSON output mode
@@ -65,9 +66,9 @@ unless `--recursive` is also given.
 progress programmatically — a progress bar UI, a web dashboard, a log aggregator, or any
 wrapper that needs structured data rather than human-readable text.
 
-With `--json` and `--verbose` active together, twitch-tag-media writes one JSON object per line
-to stdout (newline-delimited JSON / JSON Lines format).  Each object has a `process` envelope
-and a type-specific payload.
+With `--json` active, twitch-tag-media writes one JSON object per line to stdout
+(newline-delimited JSON / JSON Lines format).  Each object has a `process` envelope and a
+type-specific payload.
 
 ### Event: `progress`
 
@@ -126,7 +127,7 @@ multiple workers are interleaved on stdout.
 
 ### Event: `stats`
 
-Emitted once at the end of a run (requires `--verbose`).  Summarises the entire run.
+Emitted once at the end of a run (requires `--stats`).  Summarises the entire run.
 
 ```json
 {
