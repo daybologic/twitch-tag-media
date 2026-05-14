@@ -86,6 +86,34 @@ sub testFailure {
 	return EXIT_SUCCESS;
 }
 
+sub testFailureSystemDies {
+	my ($self) = @_;
+	plan tests => 1;
+
+	my $file    = '/tmp/' . $self->uniqueStr() . '.mp4';
+	my $artist  = $self->uniqueStr();
+	my $album   = $self->uniqueStr();
+	my $track   = $self->uniqueStr();
+	my $year    = $self->unique();
+	my $comment = $self->uniqueStr();
+	my $temp    = $self->uniqueStr();
+	my $errMsg  = 'ffmpeg exited with status 1';
+
+	open(my $fake_fh, '<', \my $dummy) or die("could not open string ref: $ERRNO");
+
+	my $mp4Package = 'Daybo::Twitch::TagWrap::Backend::MP4';
+	$self->mock($mp4Package, 'tempfile', sub { return ($fake_fh, $temp) });
+	$self->mock('Daybo::Twitch::TagWrap::Backend', '_system', sub { die("$errMsg\n") });
+
+	throws_ok(
+		sub { $self->sut->writeTags($file, $artist, $album, $track, $year, $comment) },
+		qr/\Q$errMsg\E/,
+		'exception from _system propagates out of writeTags',
+	);
+
+	return EXIT_SUCCESS;
+}
+
 sub testMoveFailure {
 	my ($self) = @_;
 	plan tests => 1;

@@ -42,6 +42,7 @@ use Daybo::Twitch::TagWrap::Backend::MKV;
 use English qw(-no_match_vars);
 use POSIX qw(EXIT_SUCCESS);
 use Test::Deep qw(cmp_deeply shallow);
+use Test::Exception;
 use Test::More 0.96;
 
 sub setUp {
@@ -55,6 +56,37 @@ sub setUp {
 sub tearDown {
 	my ($self) = @_;
 	$self->clearMocks();
+	return EXIT_SUCCESS;
+}
+
+sub testFailure {
+	my ($self) = @_;
+	plan tests => 1;
+
+	my $file    = $self->uniqueStr();
+	my $artist  = $self->uniqueStr();
+	my $album   = $self->uniqueStr();
+	my $track   = $self->uniqueStr();
+	my $year    = $self->unique();
+	my $comment = $self->uniqueStr();
+	my $xml     = $self->uniqueStr();
+	my $temp    = $self->uniqueStr();
+	my $errMsg  = 'mkvpropedit exited with status 1';
+
+	my $captured = '';
+	open(my $fake_fh, '>', \$captured) or die("could not open string ref: $ERRNO");
+
+	my $mkvPackage = 'Daybo::Twitch::TagWrap::Backend::MKV';
+	$self->mock($mkvPackage, '__buildTagXml', sub { return $xml });
+	$self->mock($mkvPackage, 'tempfile', sub { return ($fake_fh, $temp) });
+	$self->mock('Daybo::Twitch::TagWrap::Backend', '_system', sub { die("$errMsg\n") });
+
+	throws_ok(
+		sub { $self->sut->writeTags($file, $artist, $album, $track, $year, $comment) },
+		qr/\Q$errMsg\E/,
+		'exception from _system propagates out of writeTags',
+	);
+
 	return EXIT_SUCCESS;
 }
 

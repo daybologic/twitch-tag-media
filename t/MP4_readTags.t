@@ -103,6 +103,31 @@ sub testNoTags {
 	return EXIT_SUCCESS;
 }
 
+sub testFalseyRenamedTags {
+	my ($self) = @_;
+	plan tests => 1;
+
+	my $json = encode_json({
+		format => {
+			tags => {
+				date  => '0',
+				title => '',
+			},
+		},
+	});
+
+	my ($mockPackage, $mockMethod) = ('Daybo::Twitch::TagWrap::Backend::MP4', '__readTagJson');
+	$self->mock($mockPackage, $mockMethod, sub { return $json });
+
+	my $result = $self->sut->readTags($self->uniqueStr());
+	cmp_deeply($result, {
+		year  => '0',
+		track => '',
+	}, 'falsey date and title values are still renamed to canonical fields') or diag(explain($result));
+
+	return EXIT_SUCCESS;
+}
+
 sub testSuccess {
 	my ($self) = @_;
 	plan tests => 1;
