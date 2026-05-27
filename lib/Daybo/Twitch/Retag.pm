@@ -597,6 +597,7 @@ my %__filenameParserContext = ( );
 sub __parseFileName {
 	# Example: '1stdegreeproductions (live) 2021-10-18 11_05-40110166187.mp3'
 	# Example: '2022-05-30-15-20-01-vlastimilvibes.mp3'
+	# Example: 'AlessandraRoncone_music-20210613-184300.mkv'
 	my ($filename) = @_;
 
 	if (my $cached = $__filenameParserContext{$filename}) {
@@ -628,6 +629,14 @@ sub __parseFileName {
 		my $artist = __normalizeArtist($artistRaw);
 		my $album = "${artist} on Twitch";
 		my $track = "${artist} ${date} 00:00:00";
+
+		return $__filenameParserContext{$filename} = [ $artist, $album, $track, $year ];
+	} elsif ($filename =~ m/^(\w+)-(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})\.(mkv)$/) {
+		my ($artistRaw, $year, $mon, $day, $hh, $mm, $ss) = ($1, $2, $3, $4, $5, $6, $7);
+		my $date = "$year-$mon-$day";
+		my $artist = __normalizeArtist($artistRaw);
+		my $album = "${artist} on Twitch";
+		my $track = "${artist} ${date} ${hh}:${mm}:${ss}";
 
 		return $__filenameParserContext{$filename} = [ $artist, $album, $track, $year ];
 	}
