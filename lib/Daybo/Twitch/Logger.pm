@@ -31,16 +31,28 @@
 
 package Daybo::Twitch::Logger;
 use English qw(-no_match_vars);
-use IO::Dir;
-use IO::File;
 use JSON::PP qw(encode_json);
-use List::Util qw(shuffle);
 use Log::Log4perl qw(get_logger :levels);
-use Sys::CPU qw();
-use Time::HiRes qw(sleep time);
 use Moose;
-use POSIX qw(EXIT_FAILURE EXIT_SUCCESS);
-use Daybo::Twitch::TagWrap;
+use POSIX qw(EXIT_SUCCESS);
+
+has json     => (is => 'ro', isa => 'Bool', default => 0);
+has logLevel => (is => 'ro', isa => 'Str',  default => 'INFO');
+
+my $__logger;
+
+=item C<BUILD()>
+
+Moose post-construction hook.  Initializes Log4perl with one of two
+appender configurations: in JSON mode, a plain C<Screen> appender whose
+pattern is bare C<%m%n>, so each line of stdout is a self-contained JSON
+object; in text mode, the colored C<ScreenColoredLevels> appender with
+the full decorated pattern.  Sets the threshold of the
+C<Daybo.Twitch.Retag> logger from L</logLevel>.  Installs a
+C<$SIG{__DIE__}> handler that routes uncaught exceptions through
+L</emit> at the C<ERROR> level.
+
+=cut
 
 sub BUILD {
 	my ($self) = @_;
@@ -76,13 +88,13 @@ END_TEXT_CONF
 	Log::Log4perl::MDC->put('pct',   '  0.00%');
 	$SIG{__DIE__} = sub { ## no critic (Variables::RequireLocalizedPunctuationVars)
 		local $SIG{__DIE__} = 'DEFAULT';
-		$self->__log($ERROR, join('', @_)) if (defined($__logger) && !$EXCEPTIONS_BEING_CAUGHT);
+		$self->emit($ERROR, join('', @_)) if (defined($__logger) && !$EXCEPTIONS_BEING_CAUGHT);
 		die @_;
 	};
 	return;
 }
 
-=item C<log($level, $msg)>
+=item C<emit($level, $msg)>
 
 Single routing point for every log emission in this module.  C<$level>
 must be one of the Log4perl priority constants exported by
@@ -99,7 +111,7 @@ JSON.  No return value.
 
 =cut
 
-sub log {
+sub emit {
 	my ($self, $level, $msg) = @_;
 
 	my $levelName = Log::Log4perl::Level::to_level($level);
