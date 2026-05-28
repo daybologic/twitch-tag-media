@@ -57,6 +57,7 @@ this base class.
 has logger => (
 	is      => 'ro',
 	isa     => 'Daybo::Twitch::Logger',
+	lazy    => 1,
 	default => sub { Daybo::Twitch::Logger->new() },
 );
 
