@@ -68,6 +68,20 @@ has _tagWrap => (is => 'ro', isa => 'Daybo::Twitch::TagWrap', default => sub { D
 my @pids;
 my $__interrupted = 0;
 
+=item C<BUILD()>
+
+Moose post-construction hook.  Registers this instance as the application
+singleton on L<Daybo::Twitch::BaseObject> so that all other objects in the
+hierarchy can reach it via C<< $obj->application() >>.
+
+=cut
+
+sub BUILD {
+	my ($self) = @_;
+	$self->application($self);
+	return;
+}
+
 =item C<__acceptableDirName($dirName)>
 
 Returns true unless C<$dirName> is C<@eaDir> (a Synology metadata
