@@ -31,7 +31,21 @@
 
 package Daybo::Twitch::BaseObject;
 use Moose;
+use MooseX::ClassAttribute;
 use Daybo::Twitch::Logger;
+
+=item C<application>
+
+Class-level attribute holding the single L<Daybo::Twitch::Retag> application
+instance.  Shared across all objects that extend this base class.  Must be
+set before any subclass instance calls into application state.
+
+=cut
+
+class_has application => (
+	is  => 'rw',
+	isa => 'Daybo::Twitch::Retag',
+);
 
 =item C<logger>
 
