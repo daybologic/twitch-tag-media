@@ -33,7 +33,7 @@ package Daybo::Twitch::Logger;
 use English qw(-no_match_vars);
 use JSON::PP qw(encode_json);
 use Log::Log4perl qw(get_logger :levels);
-use Moose;
+use MooseX::Singleton;
 use POSIX qw(EXIT_SUCCESS);
 
 has json     => (is => 'ro', isa => 'Bool', default => 0);
