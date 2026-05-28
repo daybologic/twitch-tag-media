@@ -35,12 +35,14 @@ use IO::Dir;
 use IO::File;
 use JSON::PP qw(encode_json);
 use List::Util qw(shuffle);
-use Log::Log4perl qw(get_logger :levels);
+use Log::Log4perl qw(:levels);
 use Sys::CPU qw();
 use Time::HiRes qw(sleep time);
 use Moose;
 use POSIX qw(EXIT_FAILURE EXIT_SUCCESS);
 use Daybo::Twitch::TagWrap;
+use Daybo::Twitch::BaseObject;
+extends 'Daybo::Twitch::BaseObject';
 
 our $VERSION = '0.10.0';
 
@@ -65,60 +67,6 @@ has _tagWrap => (is => 'ro', isa => 'Daybo::Twitch::TagWrap', default => sub { D
 
 my @pids;
 my $__interrupted = 0;
-my $__logger;
-
-=item C<BUILD()>
-
-Moose post-construction hook.  Initializes Log4perl with one of two
-appender configurations: in JSON mode, a plain C<Screen> appender whose
-pattern is bare C<%m%n>, so each line of stdout is a self-contained JSON
-object; in text mode, the colored C<ScreenColoredLevels> appender with
-the full decorated pattern.  Sets the threshold of the
-C<Daybo.Twitch.Retag> logger from L</logLevel>.  Installs a
-C<$SIG{__DIE__}> handler that routes uncaught exceptions through
-L</__log> at the C<ERROR> level.
-
-=cut
-
-sub BUILD {
-	my ($self) = @_;
-
-	my $jsonConf = <<'END_JSON_CONF';
-log4perl.rootLogger = WARN, JSON
-log4perl.appender.JSON = Log::Log4perl::Appender::Screen
-log4perl.appender.JSON.stderr = 0
-log4perl.appender.JSON.layout = Log::Log4perl::Layout::PatternLayout
-log4perl.appender.JSON.layout.ConversionPattern = %m%n
-END_JSON_CONF
-
-	my $textConf = <<'END_TEXT_CONF';
-log4perl.rootLogger = WARN, SCREEN
-log4perl.appender.SCREEN = Log::Log4perl::Appender::ScreenColoredLevels
-log4perl.appender.SCREEN.stderr = 0
-log4perl.appender.SCREEN.layout = Log::Log4perl::Layout::PatternLayout
-log4perl.appender.SCREEN.layout.ConversionPattern = [%d{yyyy-MM-dd HH:mm:ss.SSS}/%X{stamp} %X{pct}] %P %-5p: (%C L%L): %m%n
-log4perl.appender.SCREEN.color.TRACE = white
-log4perl.appender.SCREEN.color.DEBUG = bright_blue
-log4perl.appender.SCREEN.color.INFO  = bright_white
-log4perl.appender.SCREEN.color.WARN  = yellow
-log4perl.appender.SCREEN.color.ERROR = red
-log4perl.appender.SCREEN.color.FATAL = bright_red
-END_TEXT_CONF
-
-	my $conf = $self->json ? $jsonConf : $textConf;
-	Log::Log4perl->init_once(\$conf);
-
-	$__logger = get_logger('Daybo.Twitch.Retag');
-	$__logger->level(Log::Log4perl::Level::to_priority(uc($self->logLevel)));
-	Log::Log4perl::MDC->put('stamp', '00:00:00.000');
-	Log::Log4perl::MDC->put('pct',   '  0.00%');
-	$SIG{__DIE__} = sub { ## no critic (Variables::RequireLocalizedPunctuationVars)
-		local $SIG{__DIE__} = 'DEFAULT';
-		$self->__log($ERROR, join('', @_)) if (defined($__logger) && !$EXCEPTIONS_BEING_CAUGHT);
-		die @_;
-	};
-	return;
-}
 
 =item C<__acceptableDirName($dirName)>
 
@@ -161,7 +109,7 @@ sub __collect {
 
 	my $dir = IO::Dir->new($dirname);
 	unless ($dir) {
-		$self->__log($ERROR, "Cannot open '$dirname': $ERRNO");
+		$self->logger->emit($ERROR, "Cannot open '$dirname': $ERRNO");
 		return -1;
 	}
 
@@ -186,7 +134,7 @@ sub __collect {
 				if (__parseFileName($filename)) {
 					push(@files, [ $relPath, $filename, $size, $ext ]);
 				} else {
-					$self->__log($WARN, $self->json ? {
+					$self->logger->emit($WARN, $self->json ? {
 						process => { type => 'unqualified' },
 						reason  => 'unparseable filename',
 						file    => $relPath,
@@ -310,7 +258,7 @@ sub __handleSignal {
 	++$__interrupted;
 	my $count = scalar(@pids);
 	if ($__interrupted == 1) {
-		$self->__log($WARN, $self->json ? {
+		$self->logger->emit($WARN, $self->json ? {
 			process  => { type => 'signal' },
 			signal   => $sig,
 			action   => 'draining',
@@ -318,7 +266,7 @@ sub __handleSignal {
 		} : sprintf("Caught SIG%s; %d child%s will finish current retag before stopping...",
 		    $sig, $count, $count == 1 ? '' : 'ren'));
 	} else {
-		$self->__log($WARN, $self->json ? {
+		$self->logger->emit($WARN, $self->json ? {
 			process  => { type => 'signal' },
 			signal   => $sig,
 			action   => 'terminating',
@@ -349,49 +297,6 @@ sub __initStats {
 		end_time       => 0,
 	});
 
-	return;
-}
-
-=item C<__log($level, $msg)>
-
-Single routing point for every log emission in this module.  C<$level>
-must be one of the Log4perl priority constants exported by
-C<< use Log::Log4perl qw(:levels) >>: C<$TRACE>, C<$DEBUG>, C<$INFO>,
-C<$WARN>, C<$ERROR>, or C<$FATAL>.  Returns early when the current
-threshold filters the level out.
-
-When C<--json> is active every emission is a JSON Lines object: a hash
-ref is shallow-copied and gains a top-level C<level> key (the string
-name of the priority) if absent; a scalar is wrapped as
-C<< { level => $name, message => $msg } >>.  When C<--json> is not
-active a plain scalar is logged as-is and a hash ref is serialised to
-JSON.  No return value.
-
-=cut
-
-sub __log {
-	my ($self, $level, $msg) = @_;
-
-	my $levelName = Log::Log4perl::Level::to_level($level);
-	my $isMethod  = 'is_' . lc($levelName);
-	return unless ($__logger->$isMethod());
-
-	local $Log::Log4perl::caller_depth = $Log::Log4perl::caller_depth + 1;
-
-	if ($self->json) {
-		my $payload;
-		if (ref($msg) eq 'HASH') {
-			$payload = { %{$msg} };
-			$payload->{level} = $levelName unless (exists($payload->{level}));
-		} else {
-			$payload = { level => $levelName, message => $msg };
-		}
-		$__logger->log($level, encode_json($payload));
-	} elsif (ref($msg) eq 'HASH') {
-		$__logger->log($level, encode_json($msg));
-	} else {
-		$__logger->log($level, $msg);
-	}
 	return;
 }
 
@@ -451,7 +356,7 @@ sub __logTagChanges {
 		$JSON_changeLog{process}{message} = 'Tags unchanged, forced rewrite'
 		    if ($changeCount == 0);
 
-		$self->__log($INFO, \%JSON_changeLog);
+		$self->logger->emit($INFO, \%JSON_changeLog);
 	} else {
 		if ($changeCount == 0) {
 			$plain_changeLog = sprintf("%sTags unchanged, forcing rewrite for '%s'", $self->__marker($pct), $file)
@@ -459,7 +364,7 @@ sub __logTagChanges {
 			$plain_changeLog = "Tags altered for '$file': ${plain_changeLog}";
 		}
 
-		$self->__log($INFO, $self->__marker($pct) . $plain_changeLog);
+		$self->logger->emit($INFO, $self->__marker($pct) . $plain_changeLog);
 	}
 
 	return $changeCount;
@@ -477,11 +382,11 @@ sub __makeJobs {
 
 	my $count = Sys::CPU::cpu_count();
 	if ($count == 1) {
-		$self->__log($DEBUG, $self->__marker(0) . 'not an SMP system');
+		$self->logger->emit($DEBUG, $self->__marker(0) . 'not an SMP system');
 		return $count;
 	}
 
-	$self->__log($DEBUG, sprintf('%s%d cores detected, max jobs set to %d (use --jobs to override)',
+	$self->logger->emit($DEBUG, sprintf('%s%d cores detected, max jobs set to %d (use --jobs to override)',
 	    $self->__marker(0), $count, $count+1));
 
 	return ++$count;
@@ -637,7 +542,7 @@ sub __parseFileName {
 
 =item C<__printStats()>
 
-Emits a run summary via C<__log> after all files have been processed.
+Emits a run summary via C<logger-E<gt>emit> after all files have been processed.
 In JSON mode, outputs a single C<stats> event object; otherwise prints a
 human-readable multi-line summary.  No return value.
 
@@ -654,7 +559,7 @@ sub __printStats {
 	my $total_mib = $s->{total_bytes} / (1024 * 1024);
 
 	if ($self->json) {
-		$self->__log($INFO, {
+		$self->logger->emit($INFO, {
 			process => { type => 'stats' },
 			stats => {
 				total_files         => $s->{total_files} + 0,
@@ -694,7 +599,7 @@ sub __printStats {
 	$plain .= sprintf("  Avg time/GiB:     %s\n", __fmtDuration($elapsed / ($total_mib / 1024)))
 	    if ($total_mib > 0);
 	$plain .= sprintf("  Concurrent jobs:  %d\n", $self->jobs);
-	$self->__log($INFO, $self->__marker(100) . $plain);
+	$self->logger->emit($INFO, $self->__marker(100) . $plain);
 
 	return;
 }
@@ -730,7 +635,7 @@ sub __reapChild {
 				$self->_stats->{skipped_bytes} += $entry->{size};
 			}
 			$self->_stats->{tags_altered} += $changeCount;
-			$self->__log($TRACE, $self->json ? {
+			$self->logger->emit($TRACE, $self->json ? {
 				process => { type => 'reaped', pid => $done_pid, pct => $pct },
 				modified      => $modified + 0,
 				tags_altered  => $changeCount + 0,
@@ -740,7 +645,7 @@ sub __reapChild {
 			    $done_pid, $modified, $changeCount, scalar(@pids) - 1,
 			));
 		} else {
-			$self->__log($TRACE, $self->json ? {
+			$self->logger->emit($TRACE, $self->json ? {
 				process => { type => 'reaped', pid => $done_pid, pct => $pct },
 				interrupted => 1,
 			} : $self->__marker($pct) . sprintf(
@@ -791,17 +696,17 @@ sub run {
 				$self->_stats->{unqualified_files}++;
 			}
 		} elsif (-d $path) {
-			$self->__log($DEBUG, $self->__marker(0) . "Walking '$path'");
+			$self->logger->emit($DEBUG, $self->__marker(0) . "Walking '$path'");
 			my $sub = $self->__collect($path);
 			push(@files, @{$sub}) if ref($sub);
 		} else {
-			$self->__log($WARN, "No such file or directory: '$path'");
+			$self->logger->emit($WARN, "No such file or directory: '$path'");
 		}
 	}
 
 	my $total = scalar(@files);
 	if ($total == 0) {
-		$self->__log($INFO, $self->__marker(0) . 'Nothing to do!');
+		$self->logger->emit($INFO, $self->__marker(0) . 'Nothing to do!');
 		return EXIT_SUCCESS;
 	}
 
@@ -833,13 +738,13 @@ sub run {
 				elapsed_s => $elapsed + 0,
 			);
 			$progress{eta_s} = $eta + 0 if (defined($eta));
-			$self->__log($DEBUG, \%progress);
+			$self->logger->emit($DEBUG, \%progress);
 		} else {
 			my $timing = '';
 			$timing = sprintf(', ETA: %s', __fmtDuration($eta))
 			    if (defined($eta));
 
-			$self->__log($DEBUG, sprintf("%sReading '%s'%s", $self->__marker($pct), $relPath, $timing));
+			$self->logger->emit($DEBUG, sprintf("%sReading '%s'%s", $self->__marker($pct), $relPath, $timing));
 		}
 
 		$self->__tag(
@@ -853,7 +758,7 @@ sub run {
 	}
 
 	if ($__interrupted && @pids) {
-		$self->__log($TRACE, $self->__marker(100) . sprintf(
+		$self->logger->emit($TRACE, $self->__marker(100) . sprintf(
 		    'Interrupted; waiting for %d child%s to finish...',
 		    scalar(@pids), scalar(@pids) == 1 ? '' : 'ren',
 		));
@@ -871,7 +776,7 @@ sub run {
 	}
 
 	$self->_stats->{end_time} = time();
-	$self->__log($INFO, $self->__marker(100) . 'Finished');
+	$self->logger->emit($INFO, $self->__marker(100) . 'Finished');
 	$self->__printStats();
 
 	return EXIT_SUCCESS;
@@ -959,13 +864,13 @@ sub __tagPerProcess {
 		@file_stat = stat($file) unless @file_stat;
 		my $cutoff = $threshold > 604800 ? $threshold : int(time()) - $threshold;
 		if ($file_stat[$idx] >= $cutoff) {
-			$self->__log($INFO, sprintf("%s%s check: skipping '%s'", $self->__marker($pct), $name, $file));
+			$self->logger->emit($INFO, sprintf("%s%s check: skipping '%s'", $self->__marker($pct), $name, $file));
 			return (0, 0);
 		}
 	}
 
 	if ($self->json) {
-		$self->__log($DEBUG, {
+		$self->logger->emit($DEBUG, {
 			process => {
 				type => 'candidate',
 				pct => $pct,
@@ -980,7 +885,7 @@ sub __tagPerProcess {
 			},
 		});
 	} else {
-#		$self->__log(sprintf('%sartist: "%s", album: "%s", track: "%s", year: "%s"',
+#		$self->logger->emit(sprintf('%sartist: "%s", album: "%s", track: "%s", year: "%s"',
 #		    $self->__marker($pct), $artist, $album, $track, $year));
 #FIXME
 	}
@@ -997,7 +902,7 @@ sub __tagPerProcess {
 	    && ($existing->{year}    // '') eq $year
 	    && ($existing->{comment} // '') eq $comment
 	) {
-		$self->__log($DEBUG, $self->json ? {
+		$self->logger->emit($DEBUG, $self->json ? {
 			process => { type => 'skipped', pct => $pct, pid => $PID },
 			file    => $file,
 		} : sprintf("%sTags unchanged, skipping '%s'", $self->__marker($pct), $file));
@@ -1022,7 +927,7 @@ sub __tagPerProcess {
 	$backendForExt->writeTags($file, $artist, $album, $track, $year, $comment);
 
 	unless (chown(-1, $gid, $file) == 1) {
-		$self->__log($ERROR, $self->json ? {
+		$self->logger->emit($ERROR, $self->json ? {
 			process => { type => 'error', pid => $PID, pct => $pct },
 			error   => 'chown_failed',
 			gid     => $gid + 0,
