@@ -65,7 +65,7 @@ sub testFailure {
 	plan tests => 1;
 
 	my $sut = Daybo::Twitch::Retag->new();
-	$self->mock('Daybo::Twitch::Retag', '__log', sub { return });
+	$self->mock('Daybo::Twitch::Logger', 'emit', sub { return });
 
 	is($sut->__collect('/tmp/' . $self->uniqueStr()), -1, 'returns -1 when directory cannot be opened');
 
@@ -96,7 +96,7 @@ sub testSuccess {
 		my (undef, $ext) = @_;
 		return ($ext eq 'mp3');
 	});
-	$self->mock('Daybo::Twitch::Retag', '__log', sub { return });
+	$self->mock('Daybo::Twitch::Logger', 'emit', sub { return });
 	$self->mock('Daybo::Twitch::Retag', '__marker', sub { return '' });
 
 	my $files = $sut->__collect($dir);
