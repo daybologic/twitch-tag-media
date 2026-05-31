@@ -21,7 +21,7 @@ jobs:
       run: git clone -q -b dlscripts-0.4.0 https://git.sr.ht/~m6kvm/dlscripts
 
     - name: dependencies
-      run: sudo apt-get install -y id3v2 ffmpeg sox `dlscripts/build-deps.sh debian/control`
+      run: sudo apt-get install -y `dlscripts/build-deps.sh debian/control`
 
     - name: ExtUtils::MakeMaker
       run: perl Makefile.PL
