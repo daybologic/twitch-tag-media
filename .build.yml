@@ -31,7 +31,7 @@
 
 image: debian/stable
 packages:
-  - debhelper-compat (= 13)
+  - debhelper-compat
   - libsys-cpu-perl
   - id3v2
   - opustags
