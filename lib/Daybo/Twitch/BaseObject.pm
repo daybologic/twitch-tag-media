@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# Twitch MP3 tagger.
+# Twitch media tagger.
 # Copyright (c) 2023-2026, Rev. Duncan Ross Palmer (2E0EOL)
 # All rights reserved.
 #
@@ -29,77 +29,36 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-package main;
-use strict;
-use warnings;
+package Daybo::Twitch::BaseObject;
+use Moose;
+use MooseX::ClassAttribute;
+use Daybo::Twitch::Logger;
 
-eval {
-	import Sys::CPU;
-};
+=item C<application>
 
-use ExtUtils::MakeMaker;
+Class-level attribute holding the single L<Daybo::Twitch::Retag> application
+instance.  Shared across all objects that extend this base class.  Must be
+set before any subclass instance calls into application state.
 
-WriteMakefile(
-	ABSTRACT     => 'Perl program for tagging Twitch media files downloaded with yt-dlp',
-	AUTHOR       => 'Rev. Duncan Ross Palmer, 2E0EOL (2e0eol@gmail.com)',
+=cut
 
-	EXE_FILES    => [glob q('bin/*')],
-	NAME         => 'Daybo::Twitch::Retag',
-
-        PREREQ_PM => {
-                'IPC::Run3'          => 0,
-                'Log::Log4perl'      => 0,
-                'Moose'              => 0,
-                'MooseX::ClassAttribute' => 0,
-                'UNIVERSAL::require' => 0,
-	}, BUILD_REQUIRES => {
-		'Sys::CPU' => 0,
-		#'Moose'           => 0,
-		#'Test::More'      => 0,
-	},
-
-	VERSION_FROM => 'lib/Daybo/Twitch/Retag.pm',
+class_has application => (
+	is  => 'rw',
+	isa => 'Daybo::Twitch::Retag',
 );
 
-package MY;
-use strict;
-use warnings;
+=item C<logger>
 
-sub test {
-	my ($self) = @_;
-	my $inherited = $self->SUPER::test(@_);
+A L<Daybo::Twitch::Logger> instance shared by all objects that extend
+this base class.
 
-	my $njobs;
-	eval {
-		$njobs = 2 * Sys::CPU::cpu_count();
-	};
-	if ($@) {
-		$njobs = 2;
-	}
+=cut
 
-	$inherited = sprintf('export HARNESS_OPTIONS=$(shell if echo $$PERL5OPT | grep -qe "-MDevel::Cover"; then echo ""; else echo j%u; fi)', $njobs) . "\n" . $inherited;
-
-	return $inherited;
-}
-
-sub postamble {
-    return q~
-deb :: pure_all
-	sbuild -A
-
-cover :: pure_all
-	TEST_QUICK=1 HARNESS_PERL_SWITCHES=-MDevel::Cover make test && cover
-
-check :: pure_all
-	@tt/run-tests.sh
-
-clean :: 
-	rm -rf cover_db
-
-# Extend test target
-test :: check
-
-    ~;
-}
+has logger => (
+	is      => 'ro',
+	isa     => 'Daybo::Twitch::Logger',
+	lazy    => 1,
+	default => sub { Daybo::Twitch::Logger->new() },
+);
 
 1;

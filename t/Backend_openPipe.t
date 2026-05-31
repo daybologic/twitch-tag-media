@@ -38,6 +38,7 @@ use lib 'externals/libtest-module-runnable-perl/lib';
 
 extends 'Test::Module::Runnable';
 
+use Daybo::Twitch::Retag;
 use Daybo::Twitch::TagWrap::Backend;
 use English qw(-no_match_vars);
 use POSIX qw(EXIT_SUCCESS);
@@ -48,6 +49,7 @@ sub setUp {
 	my ($self) = @_;
 
 	$self->sut(Daybo::Twitch::TagWrap::Backend->new());
+	$self->sut->application(Daybo::Twitch::Retag->new());
 
 	return EXIT_SUCCESS;
 }
