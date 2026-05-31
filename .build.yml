@@ -31,7 +31,7 @@
 
 image: debian/stable
 packages:
-  - debhelper-compat
+  - gawk
   - libsys-cpu-perl
   - id3v2
   - opustags
@@ -47,6 +47,8 @@ packages:
   - libtest-mockmodule-perl
   - libtest-output-perl
   - libuniversal-require-perl
+  - ffmpeg
+  - mkvtoolnix
   - sox
 
 sources:
