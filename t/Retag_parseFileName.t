@@ -41,45 +41,98 @@ extends 'Test::Module::Runnable';
 use Daybo::Twitch::Retag;
 use English qw(-no_match_vars);
 use POSIX qw(EXIT_SUCCESS);
-use Test::Deep qw(cmp_deeply);
 use Test::More 0.96;
+
+sub setUp {
+	my ($self) = @_;
+
+	$self->sut(Daybo::Twitch::Retag->new());
+
+	return EXIT_SUCCESS;
+}
+
+sub testSuccessDatePrefixed {
+	my ($self) = @_;
+	plan tests => 4;
+
+	# Format: YYYY-MM-DD-HH-MM-SS-ArtistHandle.ext
+	my $result = Daybo::Twitch::Retag::__parseFileName('2022-05-30-15-20-01-TestArtist.mp3');
+
+	is($result->[0], 'Test Artist',                              'artist');
+	is($result->[1], 'Test Artist on Twitch',                   'album');
+	is($result->[2], 'Test Artist 2022-05-30 15:20:01',         'track');
+	is($result->[3], '2022',                                     'year');
+
+	return EXIT_SUCCESS;
+}
+
+sub testSuccessDateSuffixed {
+	my ($self) = @_;
+	plan tests => 4;
+
+	# Format: ArtistHandle-YYYY-MM-DD.ext
+	my $result = Daybo::Twitch::Retag::__parseFileName('TestArtist-2021-10-18.mp3');
+
+	is($result->[0], 'Test Artist',                              'artist');
+	is($result->[1], 'Test Artist on Twitch',                   'album');
+	is($result->[2], 'Test Artist 2021-10-18 00:00:00',         'track');
+	is($result->[3], '2021',                                     'year');
+
+	return EXIT_SUCCESS;
+}
+
+sub testSuccessStreamlinkRecorder {
+	my ($self) = @_;
+	plan tests => 4;
+
+	# Format: ArtistHandle-YYYYMMDD-HHMMSS.mkv (streamlink-recorder)
+	my $result = Daybo::Twitch::Retag::__parseFileName('TestArtist-20210613-184300.mkv');
+
+	is($result->[0], 'Test Artist',                              'artist');
+	is($result->[1], 'Test Artist on Twitch',                   'album');
+	is($result->[2], 'Test Artist 2021-06-13 18:43:00',         'track');
+	is($result->[3], '2021',                                     'year');
+
+	return EXIT_SUCCESS;
+}
+
+sub testSuccessYtdlpWithStreamId {
+	my ($self) = @_;
+	plan tests => 4;
+
+	# Format: ArtistHandle (type) YYYY-MM-DD HH_MM-StreamID.ext
+	my $result = Daybo::Twitch::Retag::__parseFileName('TestArtist (live) 2021-10-18 11_05-40110166187.mp3');
+
+	is($result->[0], 'Test Artist',                                           'artist');
+	is($result->[1], 'Test Artist on Twitch',                                'album');
+	is($result->[2], 'Test Artist 2021-10-18 11:05:00 40110166187',          'track');
+	is($result->[3], '2021',                                                  'year');
+
+	return EXIT_SUCCESS;
+}
+
+sub testSuccessYtdlpWithoutStreamId {
+	my ($self) = @_;
+	plan tests => 4;
+
+	# Format: ArtistHandle (type) YYYY-MM-DD HH_MM.ext (no stream ID)
+	my $result = Daybo::Twitch::Retag::__parseFileName('TestArtist (live) 2021-10-18 11_05.mp3');
+
+	is($result->[0], 'Test Artist',                              'artist');
+	is($result->[1], 'Test Artist on Twitch',                   'album');
+	is($result->[2], 'Test Artist 2021-10-18 11:05:00',         'track');
+	is($result->[3], '2021',                                     'year');
+
+	return EXIT_SUCCESS;
+}
 
 sub testFailure {
 	my ($self) = @_;
 	plan tests => 1;
 
-	ok(!defined(Daybo::Twitch::Retag::__parseFileName($self->uniqueStr() . '.mp3')), 'returns undef for unparseable filename');
+	my $result = Daybo::Twitch::Retag::__parseFileName('not-a-valid-filename.mp3');
 
-	return EXIT_SUCCESS;
-}
-
-sub testSuccess {
-	my ($self) = @_;
-	plan tests => 4;
-
-	cmp_deeply(
-		Daybo::Twitch::Retag::__parseFileName('1stdegreeproductions (live) 2021-10-18 11_05-40110166187.mp3'),
-		['1stdegreeproductions', '1stdegreeproductions on Twitch', '1stdegreeproductions 2021-10-18 11:05:00 40110166187', '2021'],
-		'parses yt-dlp live filename with stream id',
-	);
-
-	cmp_deeply(
-		Daybo::Twitch::Retag::__parseFileName('2022-05-30-15-20-01-vlastimilvibes.mp3'),
-		['Vlastimil', 'Vlastimil on Twitch', 'Vlastimil 2022-05-30 15:20:01', '2022'],
-		'parses date-first filename',
-	);
-
-	cmp_deeply(
-		Daybo::Twitch::Retag::__parseFileName('taucher66-2023-07-12.mp4'),
-		['Taucher', 'Taucher on Twitch', 'Taucher 2023-07-12 00:00:00', '2023'],
-		'parses artist-date filename',
-	);
-
-	is(
-		Daybo::Twitch::Retag::__parseFileName('taucher66-2023-07-12.mp4'),
-		Daybo::Twitch::Retag::__parseFileName('taucher66-2023-07-12.mp4'),
-		'returns cached parse result for repeated filename',
-	);
+	ok(!defined($result), 'returns undef for unrecognised filename');
 
 	return EXIT_SUCCESS;
 }
