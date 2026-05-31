@@ -2,7 +2,7 @@ name: Perl CI
 
 on:
   push:
-    branches: [ "master", "maint/77-actions-config-pipelines" ]
+    branches: [ "master", "tests/unit-test-suite-2" ]
   pull_request:
     branches: [ "master" ]
 
