@@ -68,7 +68,7 @@ sub _mockBackend {
 	$self->mock('Daybo::Twitch::TagWrap::Backend::MP3', 'readTags', sub { return $existing });
 	$self->mock('Daybo::Twitch::TagWrap::Backend::MP3', 'deleteTags', sub { return });
 	$self->mock('Daybo::Twitch::TagWrap::Backend::MP3', 'writeTags', sub { return });
-	$self->mock('Daybo::Twitch::Retag', '__log', sub { return });
+	$self->mock('Daybo::Twitch::Logger', 'emit', sub { return });
 	$self->mock('Daybo::Twitch::Retag', '__marker', sub { return '' });
 	$self->mock('Daybo::Twitch::Retag', '__logTagChanges', sub { return 3 });
 

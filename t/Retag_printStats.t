@@ -56,11 +56,11 @@ sub testDisabled {
 	plan tests => 1;
 
 	my $sut = Daybo::Twitch::Retag->new(stats => 0);
-	$self->mock('Daybo::Twitch::Retag', '__log', sub { return });
+	$self->mock('Daybo::Twitch::Logger', 'emit', sub { return });
 
 	$sut->__printStats();
 
-	my $calls = $self->mockCallsWithObject('Daybo::Twitch::Retag', '__log');
+	my $calls = $self->mockCallsWithObject('Daybo::Twitch::Logger', 'emit');
 	cmp_deeply($calls, [], 'does not log when stats are disabled');
 
 	return EXIT_SUCCESS;
@@ -86,13 +86,13 @@ sub testSuccess {
 		start_time        => 10,
 		end_time          => 20,
 	});
-	$self->mock('Daybo::Twitch::Retag', '__log', sub { return });
+	$self->mock('Daybo::Twitch::Logger', 'emit', sub { return });
 
 	$sut->__printStats();
 
-	my $calls = $self->mockCallsWithObject('Daybo::Twitch::Retag', '__log');
+	my $calls = $self->mockCallsWithObject('Daybo::Twitch::Logger', 'emit');
 	cmp_deeply($calls, [[
-		shallow($sut),
+		shallow($sut->logger),
 		$INFO,
 		{
 			process => { type => 'stats' },

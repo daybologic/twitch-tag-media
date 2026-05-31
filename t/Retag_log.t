@@ -41,17 +41,23 @@ extends 'Test::Module::Runnable';
 use Daybo::Twitch::Retag;
 use English qw(-no_match_vars);
 use JSON::PP qw(decode_json);
-use Log::Log4perl qw(:levels);
+use Log::Log4perl qw(get_logger :levels);
 use POSIX qw(EXIT_SUCCESS);
 use Test::More 0.96;
 use Test::Output;
+
+sub tearDown {
+	my ($self) = @_;
+	get_logger('Daybo.Twitch.Retag')->level($INFO);
+	return EXIT_SUCCESS;
+}
 
 sub testJsonHash {
 	my ($self) = @_;
 	plan tests => 2;
 
 	my $sut = Daybo::Twitch::Retag->new(json => 1);
-	my $output = stdout_from(sub { $sut->__log($INFO, { event => 'unit' }) });
+	my $output = stdout_from(sub { $sut->logger->emit($INFO, { event => 'unit' }) });
 
 	my $decoded = decode_json($output);
 	is($decoded->{event}, 'unit', 'keeps supplied JSON fields');
@@ -66,7 +72,7 @@ sub testJsonScalar {
 
 	my $message = $self->uniqueStr();
 	my $sut = Daybo::Twitch::Retag->new(json => 1);
-	my $output = stdout_from(sub { $sut->__log($INFO, $message) });
+	my $output = stdout_from(sub { $sut->logger->emit($INFO, $message) });
 
 	my $decoded = decode_json($output);
 	is($decoded->{message}, $message, 'wraps scalar message');
@@ -80,7 +86,8 @@ sub testThreshold {
 	plan tests => 1;
 
 	my $sut = Daybo::Twitch::Retag->new(json => 1, logLevel => 'ERROR');
-	my $output = stdout_from(sub { $sut->__log($INFO, $self->uniqueStr()) });
+	get_logger('Daybo.Twitch.Retag')->level($ERROR);
+	my $output = stdout_from(sub { $sut->logger->emit($INFO, $self->uniqueStr()) });
 
 	is($output, '', 'does not emit below threshold');
 

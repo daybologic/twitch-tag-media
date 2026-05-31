@@ -71,14 +71,14 @@ sub testForcedUnchanged {
 		year    => $self->unique(),
 		comment => $self->uniqueStr(),
 	);
-	$self->mock('Daybo::Twitch::Retag', '__log', sub { return });
+	$self->mock('Daybo::Twitch::Logger', 'emit', sub { return });
 
 	my $count = $self->sut->__logTagChanges($file, 100, \%tags, @tags{qw(artist album track year comment)});
 
 	is($count, 0, 'returns zero when tags are unchanged');
-	my $calls = $self->mockCallsWithObject('Daybo::Twitch::Retag', '__log');
+	my $calls = $self->mockCallsWithObject('Daybo::Twitch::Logger', 'emit');
 	cmp_deeply($calls, [[
-		shallow($self->sut),
+		shallow($self->sut->logger),
 		$INFO,
 		{
 			file => $file,
@@ -100,7 +100,7 @@ sub testSuccess {
 	plan tests => 2;
 
 	my $file = '/tmp/' . $self->uniqueStr() . '.mp3';
-	$self->mock('Daybo::Twitch::Retag', '__log', sub { return });
+	$self->mock('Daybo::Twitch::Logger', 'emit', sub { return });
 
 	my $count = $self->sut->__logTagChanges(
 		$file,
@@ -114,9 +114,9 @@ sub testSuccess {
 	);
 
 	is($count, 3, 'returns changed field count');
-	my $calls = $self->mockCallsWithObject('Daybo::Twitch::Retag', '__log');
+	my $calls = $self->mockCallsWithObject('Daybo::Twitch::Logger', 'emit');
 	cmp_deeply($calls, [[
-		shallow($self->sut),
+		shallow($self->sut->logger),
 		$INFO,
 		{
 			file => $file,

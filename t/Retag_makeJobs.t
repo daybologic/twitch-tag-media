@@ -62,7 +62,7 @@ sub testSingleCore {
 	plan tests => 1;
 
 	$self->mock('Sys::CPU', 'cpu_count', sub { return 1 });
-	$self->mock('Daybo::Twitch::Retag', '__log', sub { return });
+	$self->mock('Daybo::Twitch::Logger', 'emit', sub { return });
 	$self->mock('Daybo::Twitch::Retag', '__marker', sub { return '' });
 
 	is($self->sut->__makeJobs(), 1, 'uses one job on a single-core system');
@@ -75,7 +75,7 @@ sub testSuccess {
 	plan tests => 1;
 
 	$self->mock('Sys::CPU', 'cpu_count', sub { return 4 });
-	$self->mock('Daybo::Twitch::Retag', '__log', sub { return });
+	$self->mock('Daybo::Twitch::Logger', 'emit', sub { return });
 	$self->mock('Daybo::Twitch::Retag', '__marker', sub { return '' });
 
 	is($self->sut->__makeJobs(), 5, 'uses one more than detected core count');

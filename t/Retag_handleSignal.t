@@ -49,7 +49,7 @@ sub setUp {
 	my ($self) = @_;
 
 	$self->sut(Daybo::Twitch::Retag->new(json => 1));
-	$self->mock('Daybo::Twitch::Retag', '__log', sub { return });
+	$self->mock('Daybo::Twitch::Logger', 'emit', sub { return });
 
 	return EXIT_SUCCESS;
 }
@@ -66,9 +66,9 @@ sub testSuccess {
 
 	$self->sut->__handleSignal('INT');
 
-	my $calls = $self->mockCallsWithObject('Daybo::Twitch::Retag', '__log');
+	my $calls = $self->mockCallsWithObject('Daybo::Twitch::Logger', 'emit');
 	cmp_deeply($calls, [[
-		shallow($self->sut),
+		shallow($self->sut->logger),
 		$WARN,
 		{
 			process => { type => 'signal' },

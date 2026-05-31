@@ -64,7 +64,7 @@ sub testNoFiles {
 	plan tests => 1;
 
 	my $sut = Daybo::Twitch::Retag->new();
-	$self->mock('Daybo::Twitch::Retag', '__log', sub { return });
+	$self->mock('Daybo::Twitch::Logger', 'emit', sub { return });
 	$self->mock('Daybo::Twitch::Retag', '__marker', sub { return '' });
 
 	is($sut->run('/tmp/' . $self->uniqueStr()), EXIT_SUCCESS, 'returns success when there is nothing to do');
@@ -83,7 +83,7 @@ sub testSuccess {
 	my $sut = Daybo::Twitch::Retag->new();
 	$self->mock('Daybo::Twitch::TagWrap', 'isExtSupported', sub { return 1 });
 	$self->mock('Daybo::Twitch::Retag', '__tag', sub { return });
-	$self->mock('Daybo::Twitch::Retag', '__log', sub { return });
+	$self->mock('Daybo::Twitch::Logger', 'emit', sub { return });
 	$self->mock('Daybo::Twitch::Retag', '__marker', sub { return '' });
 	$self->mock('Daybo::Twitch::Retag', 'time', sub { return 100 });
 

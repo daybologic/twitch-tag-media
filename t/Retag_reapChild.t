@@ -60,7 +60,7 @@ sub setUp {
 	});
 	$self->sut->__originalProgramName($PROGRAM_NAME);
 	$self->mock('Daybo::Twitch::Retag', '__tagPerProcess', sub { return (0, 4) });
-	$self->mock('Daybo::Twitch::Retag', '__log', sub { return });
+	$self->mock('Daybo::Twitch::Logger', 'emit', sub { return });
 	$self->mock('Daybo::Twitch::Retag', '__marker', sub { return '' });
 
 	return EXIT_SUCCESS;
