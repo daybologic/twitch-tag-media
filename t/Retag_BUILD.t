@@ -51,8 +51,8 @@ sub testSuccess {
 
 	my $message = $self->uniqueStr();
 	my $sut = Daybo::Twitch::Retag->new(json => 1, logLevel => 'ERROR');
-	my $debugOutput = stdout_from(sub { $sut->__log($INFO, $message) });
-	my $errorOutput = stdout_from(sub { $sut->__log($ERROR, $message) });
+	my $debugOutput = stdout_from(sub { $sut->logger->emit($INFO, $message) });
+	my $errorOutput = stdout_from(sub { $sut->logger->emit($ERROR, $message) });
 
 	is($debugOutput, '', 'BUILD applies configured log threshold');
 	like($errorOutput, qr/"message":"\Q$message\E"/, 'BUILD configures JSON logging appender');
