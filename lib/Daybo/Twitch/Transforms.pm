@@ -34,7 +34,7 @@ use strict;
 use warnings;
 use Exporter qw(import);
 
-our @EXPORT_OK = qw(fixConjunctions fixWorldSuffix normalizeArtist);
+our @EXPORT_OK = qw(normalizeArtist);
 
 =pod
 
@@ -54,7 +54,7 @@ normalisation rules without touching any other part of the codebase.
 
 =over
 
-=item C<fixConjunctions($artist)>
+=item C<__fixConjunctions($artist)>
 
 Lowercases C<on>, C<and>, and C<or> when they appear as interior words
 (not first or last) in C<$artist>.  Returns the artist string unchanged
@@ -62,7 +62,7 @@ if it contains two words or fewer.
 
 =cut
 
-sub fixConjunctions {
+sub __fixConjunctions {
 	my ($artist) = @_;
 	my @words = split(/\s+/, $artist);
 	return $artist if (@words <= 2);
@@ -72,14 +72,14 @@ sub fixConjunctions {
 	return join(' ', @words);
 }
 
-=item C<fixWorldSuffix($artist)>
+=item C<__fixWorldSuffix($artist)>
 
 Ensures a trailing C<world> token is separated from the preceding word by
 a space, and normalizes a trailing C< Uk> suffix to C< UK>.
 
 =cut
 
-sub fixWorldSuffix {
+sub __fixWorldSuffix {
 	my ($artist) = @_;
 	$artist =~ s/(\S)(world)$/$1 $2/i;
 	$artist =~ s/ Uk$/ UK/i;
@@ -91,9 +91,8 @@ sub fixWorldSuffix {
 Converts a raw yt-dlp artist handle into a display name.  Strips
 C<Official>, C<Music>, and C<dj> tokens; replaces underscores with
 spaces; splits camelCase runs into words; applies title-case; fixes
-conjunctions via L</fixConjunctions> and world-suffix via
-L</fixWorldSuffix>; and applies a table of hardcoded handle-to-name
-overrides.
+conjunctions and world-suffix; and applies a table of hardcoded
+handle-to-name overrides.
 
 Fork or edit this module to add mappings for streamers not yet listed.
 
@@ -120,9 +119,9 @@ sub normalizeArtist {
 		$artist = join(' ', map { ucfirst(lc($_)) } @words);
 	}
 
-	$artist = fixWorldSuffix($artist);
+	$artist = __fixWorldSuffix($artist);
 	$artist =~ s/\b([a-z])/uc($1)/ge;
-	$artist = fixConjunctions($artist);
+	$artist = __fixConjunctions($artist);
 
 	$artist = 'DJ Chopper' if ($artistRaw eq 'djChopper');
 	$artist = 'DJ DNA' if ($artist eq 'Dna');
