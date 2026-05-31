@@ -45,7 +45,7 @@ use Daybo::Twitch::Transforms;
 use Daybo::Twitch::BaseObject;
 extends 'Daybo::Twitch::BaseObject';
 
-our $VERSION = '0.10.0';
+our $VERSION = '1.0.0';
 
 our $URL = 'github.com/daybologic/twitch-tag-media';
 
