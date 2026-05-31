@@ -29,7 +29,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-package Retag_stamp_Tests;
+package Retag_normalizeArtist_Tests;
 use strict;
 use warnings;
 use Moose;
@@ -43,45 +43,20 @@ use English qw(-no_match_vars);
 use POSIX qw(EXIT_SUCCESS);
 use Test::More 0.96;
 
-sub setUp {
-	my ($self) = @_;
-
-	$self->sut(Daybo::Twitch::Retag->new());
-
-	return EXIT_SUCCESS;
-}
-
-sub tearDown {
-	my ($self) = @_;
-	$self->clearMocks();
-	return EXIT_SUCCESS;
-}
-
 sub testSuccess {
 	my ($self) = @_;
-	plan tests => 1;
+	plan tests => 10;
 
-	my $start = $self->unique();
-	$self->sut->_stats({ start_time => $start });
-	$self->mock('Daybo::Twitch::Retag', 'time', sub { return $start + 3661 }); # 1h 1m 1s elapsed
-
-	is($self->sut->__stamp(), '01:01:01.000', 'formats elapsed time as HH:MM:SS.mmm');
-
-	return EXIT_SUCCESS;
-}
-
-sub testSubMinute {
-	my ($self) = @_;
-	plan tests => 2;
-
-	my $start = $self->unique();
-	$self->sut->_stats({ start_time => $start });
-	$self->mock('Daybo::Twitch::Retag', 'time', sub { return $start + 1.234 });
-
-	is($self->sut->__stamp(), '00:00:01.234', 'formats sub-minute elapsed time');
-
-	$self->mock('Daybo::Twitch::Retag', 'time', sub { return $start + 61.987 });
-	is($self->sut->__stamp(), '00:01:01.987', 'formats minute elapsed time with millisecond precision');
+	is(Daybo::Twitch::Retag::__normalizeArtist('TheRealKristinaSky'), 'Kristina Sky', 'uses exact display-name override');
+	is(Daybo::Twitch::Retag::__normalizeArtist('taucher66'), 'Taucher', 'uses case-insensitive display-name override');
+	is(Daybo::Twitch::Retag::__normalizeArtist('The_Real_DJ_Edit'), 'DJ Edit', 'normalises DJ Edit override');
+	is(Daybo::Twitch::Retag::__normalizeArtist('XiJaroAndPitch'), 'XiJaro & Pitch', 'normalises and override');
+	is(Daybo::Twitch::Retag::__normalizeArtist('gabrielanddresden'), 'Gabriel & Dresden', 'normalises ampersand override');
+	is(Daybo::Twitch::Retag::__normalizeArtist('A_D_A_M_S_K_I'), 'A D A M S K I', 'preserves spaced acronym override');
+	is(Daybo::Twitch::Retag::__normalizeArtist('Music4ThaMasses'), 'Music4ThaMasses', 'preserves mixed-case special name');
+	is(Daybo::Twitch::Retag::__normalizeArtist('ExampleOfficialMusic'), 'Example', 'strips Official and Music tokens');
+	is(Daybo::Twitch::Retag::__normalizeArtist('someArtist_world'), 'Some Artist World', 'normalises underscores and camel case');
+	is(Daybo::Twitch::Retag::__normalizeArtist('channelTV'), 'channelTV', 'preserves TV-suffixed raw name');
 
 	return EXIT_SUCCESS;
 }
@@ -89,4 +64,4 @@ sub testSubMinute {
 package main; ## no critic (Modules::ProhibitMultiplePackages)
 use strict;
 use warnings;
-exit(Retag_stamp_Tests->new->run);
+exit(Retag_normalizeArtist_Tests->new->run);

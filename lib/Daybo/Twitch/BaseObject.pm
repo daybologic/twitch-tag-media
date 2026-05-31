@@ -29,64 +29,36 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-package Retag_stamp_Tests;
-use strict;
-use warnings;
+package Daybo::Twitch::BaseObject;
 use Moose;
+use MooseX::ClassAttribute;
+use Daybo::Twitch::Logger;
 
-use lib 'externals/libtest-module-runnable-perl/lib';
+=item C<application>
 
-extends 'Test::Module::Runnable';
+Class-level attribute holding the single L<Daybo::Twitch::Retag> application
+instance.  Shared across all objects that extend this base class.  Must be
+set before any subclass instance calls into application state.
 
-use Daybo::Twitch::Retag;
-use English qw(-no_match_vars);
-use POSIX qw(EXIT_SUCCESS);
-use Test::More 0.96;
+=cut
 
-sub setUp {
-	my ($self) = @_;
+class_has application => (
+	is  => 'rw',
+	isa => 'Daybo::Twitch::Retag',
+);
 
-	$self->sut(Daybo::Twitch::Retag->new());
+=item C<logger>
 
-	return EXIT_SUCCESS;
-}
+A L<Daybo::Twitch::Logger> instance shared by all objects that extend
+this base class.
 
-sub tearDown {
-	my ($self) = @_;
-	$self->clearMocks();
-	return EXIT_SUCCESS;
-}
+=cut
 
-sub testSuccess {
-	my ($self) = @_;
-	plan tests => 1;
+has logger => (
+	is      => 'ro',
+	isa     => 'Daybo::Twitch::Logger',
+	lazy    => 1,
+	default => sub { Daybo::Twitch::Logger->new() },
+);
 
-	my $start = $self->unique();
-	$self->sut->_stats({ start_time => $start });
-	$self->mock('Daybo::Twitch::Retag', 'time', sub { return $start + 3661 }); # 1h 1m 1s elapsed
-
-	is($self->sut->__stamp(), '01:01:01.000', 'formats elapsed time as HH:MM:SS.mmm');
-
-	return EXIT_SUCCESS;
-}
-
-sub testSubMinute {
-	my ($self) = @_;
-	plan tests => 2;
-
-	my $start = $self->unique();
-	$self->sut->_stats({ start_time => $start });
-	$self->mock('Daybo::Twitch::Retag', 'time', sub { return $start + 1.234 });
-
-	is($self->sut->__stamp(), '00:00:01.234', 'formats sub-minute elapsed time');
-
-	$self->mock('Daybo::Twitch::Retag', 'time', sub { return $start + 61.987 });
-	is($self->sut->__stamp(), '00:01:01.987', 'formats minute elapsed time with millisecond precision');
-
-	return EXIT_SUCCESS;
-}
-
-package main; ## no critic (Modules::ProhibitMultiplePackages)
-use strict;
-use warnings;
-exit(Retag_stamp_Tests->new->run);
+1;

@@ -85,6 +85,51 @@ sub testNoTags {
 	return EXIT_SUCCESS;
 }
 
+sub testFalseyRenamedTags {
+	my ($self) = @_;
+	plan tests => 1;
+
+	my ($mockPackage, $mockMethod) = ('Daybo::Twitch::TagWrap::Backend::OPUS', '__readTagLines');
+	$self->mock($mockPackage, $mockMethod, sub {
+		return [
+			'TITLE=',
+			'DATE=0',
+		];
+	});
+
+	my $result = $self->sut->readTags($self->uniqueStr());
+	cmp_deeply($result, {
+		track => '',
+		year  => '0',
+	}, 'falsey DATE and TITLE values are still renamed to canonical fields')
+	    or diag(explain($result));
+
+	return EXIT_SUCCESS;
+}
+
+sub testMalformedLines {
+	my ($self) = @_;
+	plan tests => 1;
+
+	my $artist = $self->uniqueStr();
+
+	my ($mockPackage, $mockMethod) = ('Daybo::Twitch::TagWrap::Backend::OPUS', '__readTagLines');
+	$self->mock($mockPackage, $mockMethod, sub {
+		return [
+			$self->uniqueStr(),
+			"ARTIST=$artist",
+		];
+	});
+
+	my $result = $self->sut->readTags($self->uniqueStr());
+	cmp_deeply($result, {
+		artist => $artist,
+	}, 'malformed lines are skipped while valid tags are retained')
+	    or diag(explain($result));
+
+	return EXIT_SUCCESS;
+}
+
 sub testSuccess {
 	my ($self) = @_;
 	plan tests => 1;

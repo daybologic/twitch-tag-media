@@ -3,19 +3,24 @@ Section: sound
 Priority: optional
 Maintainer: Rev. Duncan Ross Palmer <2e0eol@gmail.com>
 Build-Depends: debhelper-compat (= 13)
-Build-Depends-Indep: libsys-cpu-perl,
+Build-Depends-Indep: gawk,
+ libsys-cpu-perl,
  id3v2,
  opustags,
  lame,
  libipc-run3-perl,
  liblog-log4perl-perl,
  libmoose-perl,
+ libmoosex-classattribute-perl,
+ libmoosex-singleton-perl,
  libreadonly-perl,
  libtest-deep-perl,
  libtest-exception-perl,
  libtest-mockmodule-perl,
  libtest-output-perl,
  libuniversal-require-perl,
+ ffmpeg,
+ mkvtoolnix,
  sox
 Standards-Version: 4.7.2
 Rules-Requires-Root: no
@@ -24,16 +29,19 @@ Homepage: https://git.sr.ht/~m6kvm/twitch-tag-media
 Package: twitch-tag-media
 Architecture: all
 Depends: ${shlibs:Depends}, ${misc:Depends},
- ffmpeg,
- opustags,
- id3v2,
  libipc-run3-perl,
  liblog-log4perl-perl,
  libmoose-perl,
+ libmoosex-classattribute-perl,
+ libmoosex-singleton-perl,
  libreadonly-perl,
  libsys-cpu-perl,
- libuniversal-require-perl,
- mkvtoolnix
+ libuniversal-require-perl
+Recommends:
+ ffmpeg,
+ id3v2,
+ mkvtoolnix,
+ opustags
 Description: Perl program for tagging Twitch media files
  If you have used yt-dlp to download MP3 or MP4 files from Twitch,
  this program can set suitable tags on those files, recursively,

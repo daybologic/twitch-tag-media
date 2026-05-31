@@ -86,11 +86,11 @@ sub readTags {
 		$tags{$key} = $value;
 	}
 
-	if ($tags{date}) {
+	if (exists($tags{date})) {
 		$tags{year} = delete($tags{date});
 	}
 
-	if ($tags{title}) {
+	if (exists($tags{title})) {
 		$tags{track} = delete($tags{title});
 	}
 

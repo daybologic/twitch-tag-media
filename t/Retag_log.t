@@ -29,7 +29,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-package Retag_stamp_Tests;
+package Retag_log_Tests;
 use strict;
 use warnings;
 use Moose;
@@ -40,48 +40,56 @@ extends 'Test::Module::Runnable';
 
 use Daybo::Twitch::Retag;
 use English qw(-no_match_vars);
+use JSON::PP qw(decode_json);
+use Log::Log4perl qw(get_logger :levels);
 use POSIX qw(EXIT_SUCCESS);
 use Test::More 0.96;
-
-sub setUp {
-	my ($self) = @_;
-
-	$self->sut(Daybo::Twitch::Retag->new());
-
-	return EXIT_SUCCESS;
-}
+use Test::Output;
 
 sub tearDown {
 	my ($self) = @_;
-	$self->clearMocks();
+	get_logger('Daybo.Twitch.Retag')->level($INFO);
 	return EXIT_SUCCESS;
 }
 
-sub testSuccess {
-	my ($self) = @_;
-	plan tests => 1;
-
-	my $start = $self->unique();
-	$self->sut->_stats({ start_time => $start });
-	$self->mock('Daybo::Twitch::Retag', 'time', sub { return $start + 3661 }); # 1h 1m 1s elapsed
-
-	is($self->sut->__stamp(), '01:01:01.000', 'formats elapsed time as HH:MM:SS.mmm');
-
-	return EXIT_SUCCESS;
-}
-
-sub testSubMinute {
+sub testJsonHash {
 	my ($self) = @_;
 	plan tests => 2;
 
-	my $start = $self->unique();
-	$self->sut->_stats({ start_time => $start });
-	$self->mock('Daybo::Twitch::Retag', 'time', sub { return $start + 1.234 });
+	my $sut = Daybo::Twitch::Retag->new(json => 1);
+	my $output = stdout_from(sub { $sut->logger->emit($INFO, { event => 'unit' }) });
 
-	is($self->sut->__stamp(), '00:00:01.234', 'formats sub-minute elapsed time');
+	my $decoded = decode_json($output);
+	is($decoded->{event}, 'unit', 'keeps supplied JSON fields');
+	is($decoded->{level}, 'INFO', 'adds level to JSON hash');
 
-	$self->mock('Daybo::Twitch::Retag', 'time', sub { return $start + 61.987 });
-	is($self->sut->__stamp(), '00:01:01.987', 'formats minute elapsed time with millisecond precision');
+	return EXIT_SUCCESS;
+}
+
+sub testJsonScalar {
+	my ($self) = @_;
+	plan tests => 2;
+
+	my $message = $self->uniqueStr();
+	my $sut = Daybo::Twitch::Retag->new(json => 1);
+	my $output = stdout_from(sub { $sut->logger->emit($INFO, $message) });
+
+	my $decoded = decode_json($output);
+	is($decoded->{message}, $message, 'wraps scalar message');
+	is($decoded->{level}, 'INFO', 'adds scalar message level');
+
+	return EXIT_SUCCESS;
+}
+
+sub testThreshold {
+	my ($self) = @_;
+	plan tests => 1;
+
+	my $sut = Daybo::Twitch::Retag->new(json => 1, logLevel => 'ERROR');
+	get_logger('Daybo.Twitch.Retag')->level($ERROR);
+	my $output = stdout_from(sub { $sut->logger->emit($INFO, $self->uniqueStr()) });
+
+	is($output, '', 'does not emit below threshold');
 
 	return EXIT_SUCCESS;
 }
@@ -89,4 +97,4 @@ sub testSubMinute {
 package main; ## no critic (Modules::ProhibitMultiplePackages)
 use strict;
 use warnings;
-exit(Retag_stamp_Tests->new->run);
+exit(Retag_log_Tests->new->run);

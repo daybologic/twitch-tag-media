@@ -29,7 +29,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-package Retag_stamp_Tests;
+package Retag_initStats_Tests;
 use strict;
 use warnings;
 use Moose;
@@ -41,6 +41,7 @@ extends 'Test::Module::Runnable';
 use Daybo::Twitch::Retag;
 use English qw(-no_match_vars);
 use POSIX qw(EXIT_SUCCESS);
+use Test::Deep qw(cmp_deeply);
 use Test::More 0.96;
 
 sub setUp {
@@ -62,26 +63,25 @@ sub testSuccess {
 	plan tests => 1;
 
 	my $start = $self->unique();
-	$self->sut->_stats({ start_time => $start });
-	$self->mock('Daybo::Twitch::Retag', 'time', sub { return $start + 3661 }); # 1h 1m 1s elapsed
+	$self->mock('Daybo::Twitch::Retag', 'time', sub { return $start });
 
-	is($self->sut->__stamp(), '01:01:01.000', 'formats elapsed time as HH:MM:SS.mmm');
+	$self->sut->__initStats();
 
-	return EXIT_SUCCESS;
-}
-
-sub testSubMinute {
-	my ($self) = @_;
-	plan tests => 2;
-
-	my $start = $self->unique();
-	$self->sut->_stats({ start_time => $start });
-	$self->mock('Daybo::Twitch::Retag', 'time', sub { return $start + 1.234 });
-
-	is($self->sut->__stamp(), '00:00:01.234', 'formats sub-minute elapsed time');
-
-	$self->mock('Daybo::Twitch::Retag', 'time', sub { return $start + 61.987 });
-	is($self->sut->__stamp(), '00:01:01.987', 'formats minute elapsed time with millisecond precision');
+	cmp_deeply($self->sut->_stats, {
+		total_files       => 0,
+		modified_files    => 0,
+		skipped_files     => 0,
+		total_bytes       => 0,
+		modified_bytes    => 0,
+		skipped_bytes     => 0,
+		tags_altered      => 0,
+		unqualified_bytes => 0,
+		unqualified_files => 0,
+		seen_files        => 0,
+		seen_bytes        => 0,
+		start_time        => $start,
+		end_time          => 0,
+	}, 'initialises all stats counters');
 
 	return EXIT_SUCCESS;
 }
@@ -89,4 +89,4 @@ sub testSubMinute {
 package main; ## no critic (Modules::ProhibitMultiplePackages)
 use strict;
 use warnings;
-exit(Retag_stamp_Tests->new->run);
+exit(Retag_initStats_Tests->new->run);

@@ -29,7 +29,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-package Retag_stamp_Tests;
+package Retag_collect_Tests;
 use strict;
 use warnings;
 use Moose;
@@ -40,16 +40,11 @@ extends 'Test::Module::Runnable';
 
 use Daybo::Twitch::Retag;
 use English qw(-no_match_vars);
+use File::Path qw(make_path);
+use File::Temp qw(tempdir);
 use POSIX qw(EXIT_SUCCESS);
+use Test::Deep qw(bag cmp_deeply);
 use Test::More 0.96;
-
-sub setUp {
-	my ($self) = @_;
-
-	$self->sut(Daybo::Twitch::Retag->new());
-
-	return EXIT_SUCCESS;
-}
 
 sub tearDown {
 	my ($self) = @_;
@@ -57,31 +52,66 @@ sub tearDown {
 	return EXIT_SUCCESS;
 }
 
-sub testSuccess {
+sub _writeFile {
+	my ($path, $content) = @_;
+	open(my $fh, '>', $path) or die("Cannot create '$path': $ERRNO");
+	print {$fh} $content;
+	close($fh) or die("Cannot close '$path': $ERRNO");
+	return;
+}
+
+sub testFailure {
 	my ($self) = @_;
 	plan tests => 1;
 
-	my $start = $self->unique();
-	$self->sut->_stats({ start_time => $start });
-	$self->mock('Daybo::Twitch::Retag', 'time', sub { return $start + 3661 }); # 1h 1m 1s elapsed
+	my $sut = Daybo::Twitch::Retag->new();
+	$self->mock('Daybo::Twitch::Logger', 'emit', sub { return });
 
-	is($self->sut->__stamp(), '01:01:01.000', 'formats elapsed time as HH:MM:SS.mmm');
+	is($sut->__collect('/tmp/' . $self->uniqueStr()), -1, 'returns -1 when directory cannot be opened');
 
 	return EXIT_SUCCESS;
 }
 
-sub testSubMinute {
+sub testSuccess {
 	my ($self) = @_;
 	plan tests => 2;
 
-	my $start = $self->unique();
-	$self->sut->_stats({ start_time => $start });
-	$self->mock('Daybo::Twitch::Retag', 'time', sub { return $start + 1.234 });
+	my $dir = tempdir(CLEANUP => 1);
+	my $subdir = "$dir/sub";
+	my $eaDir = "$dir/\@eaDir";
+	make_path($subdir, $eaDir);
 
-	is($self->sut->__stamp(), '00:00:01.234', 'formats sub-minute elapsed time');
+	my $good = 'taucher66-2023-07-12.mp3';
+	my $nested = 'vlastimilvibes-2022-01-02.mp3';
+	_writeFile("$dir/$good", 'good');
+	_writeFile("$subdir/$nested", 'nested');
+	_writeFile("$dir/unparseable.mp3", 'bad');
+	_writeFile("$dir/taucher66-2023-07-12.temp.mp3", 'temp');
+	_writeFile("$dir/taucher66-2023-07-12.txt", 'unsupported');
+	_writeFile("$eaDir/taucher66-2023-07-12.mp3", 'ignored');
 
-	$self->mock('Daybo::Twitch::Retag', 'time', sub { return $start + 61.987 });
-	is($self->sut->__stamp(), '00:01:01.987', 'formats minute elapsed time with millisecond precision');
+	my $sut = Daybo::Twitch::Retag->new(recursive => 1);
+	$sut->_stats({ start_time => 0 });
+	$self->mock('Daybo::Twitch::TagWrap', 'isExtSupported', sub {
+		my (undef, $ext) = @_;
+		return ($ext eq 'mp3');
+	});
+	$self->mock('Daybo::Twitch::Logger', 'emit', sub { return });
+	$self->mock('Daybo::Twitch::Retag', '__marker', sub { return '' });
+
+	my $files = $sut->__collect($dir);
+
+	cmp_deeply($files, bag(
+		["$dir/$good", $good, 4, 'mp3'],
+		["$subdir/$nested", $nested, 6, 'mp3'],
+	), 'collects supported parseable files recursively and skips @eaDir');
+	cmp_deeply($sut->_stats, {
+		start_time => 0,
+		seen_files => 5,
+		seen_bytes => 4 + 6 + 3 + 4 + 11,
+		unqualified_files => 3,
+		unqualified_bytes => 3 + 4 + 11,
+	}, 'updates seen and unqualified stats');
 
 	return EXIT_SUCCESS;
 }
@@ -89,4 +119,4 @@ sub testSubMinute {
 package main; ## no critic (Modules::ProhibitMultiplePackages)
 use strict;
 use warnings;
-exit(Retag_stamp_Tests->new->run);
+exit(Retag_collect_Tests->new->run);

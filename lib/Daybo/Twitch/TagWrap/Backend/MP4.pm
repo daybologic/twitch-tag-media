@@ -75,11 +75,11 @@ sub readTags {
 	my $data = decode_json($json);
 	my $tags = $data->{format}{tags} || {};
 
-	if ($tags->{date}) {
+	if (exists($tags->{date})) {
 		$tags->{year} = delete($tags->{date});
 	}
 
-	if ($tags->{title}) {
+	if (exists($tags->{title})) {
 		$tags->{track} = delete($tags->{title});
 	}
 

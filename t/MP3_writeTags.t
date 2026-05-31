@@ -53,6 +53,36 @@ sub setUp {
 	return EXIT_SUCCESS;
 }
 
+sub tearDown {
+	my ($self) = @_;
+	$self->clearMocks();
+	return EXIT_SUCCESS;
+}
+
+sub testFailure {
+	my ($self) = @_;
+	plan tests => 1;
+
+	my $file    = $self->uniqueStr();
+	my $artist  = $self->uniqueStr();
+	my $album   = $self->uniqueStr();
+	my $track   = $self->uniqueStr();
+	my $year    = $self->unique();
+	my $comment = $self->uniqueStr();
+	my $errMsg  = 'id3v2 exited with status 1';
+
+	my ($mockPackage, $mockMethod) = ('Daybo::Twitch::TagWrap::Backend', '_system');
+	$self->mock($mockPackage, $mockMethod, sub { die("$errMsg\n") });
+
+	throws_ok(
+		sub { $self->sut->writeTags($file, $artist, $album, $track, $year, $comment) },
+		qr/\Q$errMsg\E/,
+		'exception from _system propagates out of writeTags',
+	);
+
+	return EXIT_SUCCESS;
+}
+
 sub testSuccess {
 	my ($self) = @_;
 	plan tests => 1;

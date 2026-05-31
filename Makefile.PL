@@ -50,6 +50,7 @@ WriteMakefile(
                 'IPC::Run3'          => 0,
                 'Log::Log4perl'      => 0,
                 'Moose'              => 0,
+                'MooseX::ClassAttribute' => 0,
                 'UNIVERSAL::require' => 0,
 	}, BUILD_REQUIRES => {
 		'Sys::CPU' => 0,

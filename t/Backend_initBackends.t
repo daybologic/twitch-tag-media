@@ -91,6 +91,28 @@ sub testFailure {
 	return EXIT_SUCCESS;
 }
 
+sub testInheritedMP4Backends {
+	my ($self) = @_;
+	plan tests => 6;
+
+	local $mockGlob = do {
+		my @files = (
+			'fake/path/AAC.pm',
+			'fake/path/AC3.pm',
+			'fake/path/M4A.pm',
+		);
+		sub { return shift(@files) };
+	};
+
+	my $result = $self->sut->__initBackends();
+	foreach my $ext (qw(AAC AC3 M4A)) {
+		ok(exists($result->{$ext}), "$ext key present in returned hashref");
+		isa_ok($result->{$ext}, 'Daybo::Twitch::TagWrap::Backend::MP4');
+	}
+
+	return EXIT_SUCCESS;
+}
+
 sub testSuccess {
 	my ($self) = @_;
 	plan tests => 2;

@@ -29,7 +29,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-package Retag_stamp_Tests;
+package Retag_logTagChanges_Tests;
 use strict;
 use warnings;
 use Moose;
@@ -40,13 +40,15 @@ extends 'Test::Module::Runnable';
 
 use Daybo::Twitch::Retag;
 use English qw(-no_match_vars);
+use Log::Log4perl qw(:levels);
 use POSIX qw(EXIT_SUCCESS);
+use Test::Deep qw(cmp_deeply ignore shallow);
 use Test::More 0.96;
 
 sub setUp {
 	my ($self) = @_;
 
-	$self->sut(Daybo::Twitch::Retag->new());
+	$self->sut(Daybo::Twitch::Retag->new(json => 1));
 
 	return EXIT_SUCCESS;
 }
@@ -57,31 +59,79 @@ sub tearDown {
 	return EXIT_SUCCESS;
 }
 
-sub testSuccess {
+sub testForcedUnchanged {
 	my ($self) = @_;
-	plan tests => 1;
+	plan tests => 2;
 
-	my $start = $self->unique();
-	$self->sut->_stats({ start_time => $start });
-	$self->mock('Daybo::Twitch::Retag', 'time', sub { return $start + 3661 }); # 1h 1m 1s elapsed
+	my $file = '/tmp/' . $self->uniqueStr() . '.mp3';
+	my %tags = (
+		artist  => $self->uniqueStr(),
+		album   => $self->uniqueStr(),
+		track   => $self->uniqueStr(),
+		year    => $self->unique(),
+		comment => $self->uniqueStr(),
+	);
+	$self->mock('Daybo::Twitch::Logger', 'emit', sub { return });
 
-	is($self->sut->__stamp(), '01:01:01.000', 'formats elapsed time as HH:MM:SS.mmm');
+	my $count = $self->sut->__logTagChanges($file, 100, \%tags, @tags{qw(artist album track year comment)});
+
+	is($count, 0, 'returns zero when tags are unchanged');
+	my $calls = $self->mockCallsWithObject('Daybo::Twitch::Logger', 'emit');
+	cmp_deeply($calls, [[
+		shallow($self->sut->logger),
+		$INFO,
+		{
+			file => $file,
+			process => {
+				type => 'changelog',
+				pct => 100,
+				pid => ignore(),
+				message => 'Tags unchanged, forced rewrite',
+			},
+			changes => [],
+		},
+	]], 'logs forced unchanged JSON event') or diag(explain($calls));
 
 	return EXIT_SUCCESS;
 }
 
-sub testSubMinute {
+sub testSuccess {
 	my ($self) = @_;
 	plan tests => 2;
 
-	my $start = $self->unique();
-	$self->sut->_stats({ start_time => $start });
-	$self->mock('Daybo::Twitch::Retag', 'time', sub { return $start + 1.234 });
+	my $file = '/tmp/' . $self->uniqueStr() . '.mp3';
+	$self->mock('Daybo::Twitch::Logger', 'emit', sub { return });
 
-	is($self->sut->__stamp(), '00:00:01.234', 'formats sub-minute elapsed time');
+	my $count = $self->sut->__logTagChanges(
+		$file,
+		50,
+		{ artist => 'Old Artist', album => 'Album', track => '', year => '2020', comment => 'Comment' },
+		'New Artist',
+		'Album',
+		'Track',
+		'2021',
+		'Comment',
+	);
 
-	$self->mock('Daybo::Twitch::Retag', 'time', sub { return $start + 61.987 });
-	is($self->sut->__stamp(), '00:01:01.987', 'formats minute elapsed time with millisecond precision');
+	is($count, 3, 'returns changed field count');
+	my $calls = $self->mockCallsWithObject('Daybo::Twitch::Logger', 'emit');
+	cmp_deeply($calls, [[
+		shallow($self->sut->logger),
+		$INFO,
+		{
+			file => $file,
+			process => {
+				type => 'changelog',
+				pct => 50,
+				pid => ignore(),
+			},
+			changes => [
+				{ field => 'artist', old => 'Old Artist', new => 'New Artist' },
+				{ field => 'track', old => '', new => 'Track' },
+				{ field => 'year', old => '2020', new => '2021' },
+			],
+		},
+	]], 'logs changed fields in JSON event') or diag(explain($calls));
 
 	return EXIT_SUCCESS;
 }
@@ -89,4 +139,4 @@ sub testSubMinute {
 package main; ## no critic (Modules::ProhibitMultiplePackages)
 use strict;
 use warnings;
-exit(Retag_stamp_Tests->new->run);
+exit(Retag_logTagChanges_Tests->new->run);

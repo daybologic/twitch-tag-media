@@ -34,7 +34,10 @@ use Data::Dumper;
 use English qw(-no_match_vars);
 use File::Basename;
 use IPC::Run3;
+use Log::Log4perl qw(:levels);
 use UNIVERSAL::require;
+
+extends 'Daybo::Twitch::BaseObject';
 
 has __backends   => (
 	is       => 'ro',
@@ -128,7 +131,12 @@ to its standard output, or C<undef> if the process could not be started.
 
 sub _openPipe {
 	my ($self, @cmd) = @_;
-	return $self->__open('-|', @cmd);
+	my $pipeHandle = $self->__open('-|', @cmd);
+
+	$self->application->logger->emit($ERROR, 'Cannot open pipe for: ' . join(' ', @cmd) . "\n: $ERRNO")
+	    unless ($pipeHandle);
+
+	return $pipeHandle;
 }
 
 =item C<_system(@args)>

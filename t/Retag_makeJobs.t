@@ -29,7 +29,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-package Retag_stamp_Tests;
+package Retag_makeJobs_Tests;
 use strict;
 use warnings;
 use Moose;
@@ -57,31 +57,28 @@ sub tearDown {
 	return EXIT_SUCCESS;
 }
 
-sub testSuccess {
+sub testSingleCore {
 	my ($self) = @_;
 	plan tests => 1;
 
-	my $start = $self->unique();
-	$self->sut->_stats({ start_time => $start });
-	$self->mock('Daybo::Twitch::Retag', 'time', sub { return $start + 3661 }); # 1h 1m 1s elapsed
+	$self->mock('Sys::CPU', 'cpu_count', sub { return 1 });
+	$self->mock('Daybo::Twitch::Logger', 'emit', sub { return });
+	$self->mock('Daybo::Twitch::Retag', '__marker', sub { return '' });
 
-	is($self->sut->__stamp(), '01:01:01.000', 'formats elapsed time as HH:MM:SS.mmm');
+	is($self->sut->__makeJobs(), 1, 'uses one job on a single-core system');
 
 	return EXIT_SUCCESS;
 }
 
-sub testSubMinute {
+sub testSuccess {
 	my ($self) = @_;
-	plan tests => 2;
+	plan tests => 1;
 
-	my $start = $self->unique();
-	$self->sut->_stats({ start_time => $start });
-	$self->mock('Daybo::Twitch::Retag', 'time', sub { return $start + 1.234 });
+	$self->mock('Sys::CPU', 'cpu_count', sub { return 4 });
+	$self->mock('Daybo::Twitch::Logger', 'emit', sub { return });
+	$self->mock('Daybo::Twitch::Retag', '__marker', sub { return '' });
 
-	is($self->sut->__stamp(), '00:00:01.234', 'formats sub-minute elapsed time');
-
-	$self->mock('Daybo::Twitch::Retag', 'time', sub { return $start + 61.987 });
-	is($self->sut->__stamp(), '00:01:01.987', 'formats minute elapsed time with millisecond precision');
+	is($self->sut->__makeJobs(), 5, 'uses one more than detected core count');
 
 	return EXIT_SUCCESS;
 }
@@ -89,4 +86,4 @@ sub testSubMinute {
 package main; ## no critic (Modules::ProhibitMultiplePackages)
 use strict;
 use warnings;
-exit(Retag_stamp_Tests->new->run);
+exit(Retag_makeJobs_Tests->new->run);

@@ -1,0 +1,35 @@
+name: Perl CI
+
+on:
+  push:
+    branches: [ "master", "tests/unit-test-suite-2" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: recursion
+      run: git submodule update --init --recursive
+
+    - name: dlscripts
+      run: git clone -q -b dlscripts-0.4.0 https://git.sr.ht/~m6kvm/dlscripts
+
+    - name: dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y `dlscripts/build-deps.sh debian/control`
+
+    - name: ExtUtils::MakeMaker
+      run: perl Makefile.PL
+
+    - name: make
+      run: make
+
+    - name: make test
+      run: make test

@@ -29,7 +29,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-package Retag_stamp_Tests;
+package Retag_fmtBytes_Tests;
 use strict;
 use warnings;
 use Moose;
@@ -43,45 +43,16 @@ use English qw(-no_match_vars);
 use POSIX qw(EXIT_SUCCESS);
 use Test::More 0.96;
 
-sub setUp {
-	my ($self) = @_;
-
-	$self->sut(Daybo::Twitch::Retag->new());
-
-	return EXIT_SUCCESS;
-}
-
-sub tearDown {
-	my ($self) = @_;
-	$self->clearMocks();
-	return EXIT_SUCCESS;
-}
-
 sub testSuccess {
 	my ($self) = @_;
-	plan tests => 1;
+	plan tests => 6;
 
-	my $start = $self->unique();
-	$self->sut->_stats({ start_time => $start });
-	$self->mock('Daybo::Twitch::Retag', 'time', sub { return $start + 3661 }); # 1h 1m 1s elapsed
-
-	is($self->sut->__stamp(), '01:01:01.000', 'formats elapsed time as HH:MM:SS.mmm');
-
-	return EXIT_SUCCESS;
-}
-
-sub testSubMinute {
-	my ($self) = @_;
-	plan tests => 2;
-
-	my $start = $self->unique();
-	$self->sut->_stats({ start_time => $start });
-	$self->mock('Daybo::Twitch::Retag', 'time', sub { return $start + 1.234 });
-
-	is($self->sut->__stamp(), '00:00:01.234', 'formats sub-minute elapsed time');
-
-	$self->mock('Daybo::Twitch::Retag', 'time', sub { return $start + 61.987 });
-	is($self->sut->__stamp(), '00:01:01.987', 'formats minute elapsed time with millisecond precision');
+	is(Daybo::Twitch::Retag::__fmtBytes(undef), '0 bytes', 'undef formats as zero bytes');
+	is(Daybo::Twitch::Retag::__fmtBytes(999), '999 bytes', 'formats bytes');
+	is(Daybo::Twitch::Retag::__fmtBytes(1024), '1.0 KiB (1024 bytes)', 'formats KiB');
+	is(Daybo::Twitch::Retag::__fmtBytes(1024 * 1024), '1.00 MiB (1048576 bytes)', 'formats MiB');
+	is(Daybo::Twitch::Retag::__fmtBytes(1024 * 1024 * 1024), '1.000 GiB (1073741824 bytes)', 'formats GiB');
+	is(Daybo::Twitch::Retag::__fmtBytes(1000 * 1024 * 1024 * 1024), '0.977 TiB (1073741824000 bytes)', 'formats TiB');
 
 	return EXIT_SUCCESS;
 }
@@ -89,4 +60,4 @@ sub testSubMinute {
 package main; ## no critic (Modules::ProhibitMultiplePackages)
 use strict;
 use warnings;
-exit(Retag_stamp_Tests->new->run);
+exit(Retag_fmtBytes_Tests->new->run);
