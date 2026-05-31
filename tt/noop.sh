@@ -70,6 +70,31 @@ checkFile() {
 	check comment "$COMMENT"     "$comment"
 }
 
+checkMkvFile() {
+	local file="$1" exp_artist="$2" exp_album="$3" exp_track="$4" exp_year="$5"
+	local artist='' album='' track='' year='' comment=''
+
+	echo "--- $file ---"
+	eval "$(
+	ffprobe -v quiet -print_format ini -show_format "${rootDir}/${file}" |
+	awk -F'=' '
+	/^\[format\.tags\]/ { in_tags=1; next }
+	/^\[/               { in_tags=0 }
+	in_tags && $1=="ARTIST"        { print "artist=\"" substr($0, index($0,"=")+1) "\"" }
+	in_tags && $1=="ALBUM"         { print "album=\"" substr($0, index($0,"=")+1) "\"" }
+	in_tags && $1=="TITLE"         { v=substr($0, index($0,"=")+1); gsub(/\\:/, ":", v); print "track=\"" v "\"" }
+	in_tags && $1=="DATE_RELEASED" { print "year=\"" substr($0, index($0,"=")+1) "\"" }
+	in_tags && $1=="COMMENT"       { print "comment=\"" substr($0, index($0,"=")+1) "\"" }
+	'
+	)"
+
+	check artist  "$exp_artist"  "$artist"
+	check album   "$exp_album"   "$album"
+	check track   "$exp_track"   "$track"
+	check year    "$exp_year"    "$year"
+	check comment "$COMMENT"     "$comment"
+}
+
 checkFile "JohnnyEOfficial (live) 2022-03-17 20_31-45879430669-desilence.mp3" "" "" "" ""
 
 checkFile "JenniferRenePlays (live) 2022-03-17 00_12-45870468605.mp3" "" "" "" ""
@@ -85,5 +110,7 @@ checkFile "SOTCHI_RIOT (live) 2022-05-28 16_17-45482207596-desilence.mp3" "" "" 
 checkFile "swearyprincess (live) 2022-08-04 20_07-45869356460-desilence.mp3" "" "" "" ""
 
 checkFile "Ucron (live) 2022-10-17 00_06-40358894505-desilence.mp3" "" "" "" ""
+
+checkMkvFile "AlessandraRoncone_music-20210613-184300.mkv" "" "" "" ""
 
 exit 0

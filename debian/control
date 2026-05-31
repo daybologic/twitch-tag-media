@@ -3,7 +3,8 @@ Section: sound
 Priority: optional
 Maintainer: Rev. Duncan Ross Palmer <2e0eol@gmail.com>
 Build-Depends: debhelper-compat (= 13)
-Build-Depends-Indep: libsys-cpu-perl,
+Build-Depends-Indep: gawk,
+ libsys-cpu-perl,
  id3v2,
  opustags,
  lame,
@@ -18,6 +19,8 @@ Build-Depends-Indep: libsys-cpu-perl,
  libtest-mockmodule-perl,
  libtest-output-perl,
  libuniversal-require-perl,
+ ffmpeg,
+ mkvtoolnix,
  sox
 Standards-Version: 4.7.2
 Rules-Requires-Root: no
