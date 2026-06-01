@@ -1,3 +1,27 @@
+twitch-tag-media (1.0.0) stable; urgency=low
+
+  * Extract artist-name transforms into Daybo::Twitch::Transforms; make
+    fixConjunctions and fixWorldSuffix private with unit tests (#70, #97).
+  * Add streamlink-recorder filename format support (#93).
+  * Add Log4perl logging: replace --verbose/-v with --log-level/-L
+    accepting Log4perl level names; add --stats flag; add --json for
+    structured JSON log output; add coloured level output (#69).
+  * Add AAC and AC3 backends (delegate to MP4 backend).
+  * Add M4A backend (delegates to MP4 backend).
+  * Add Opus backend via opustags.
+  * Handle SIGINT/SIGTERM gracefully, forwarding signals to children (#85).
+  * Introduce BaseObject with singleton Logger via MooseX::Singleton and
+    MooseX::ClassAttribute; route all logging through Logger::emit.
+  * Add comprehensive unit test suite covering all backends and core methods
+    (#48).
+  * Add CI pipeline configurations for GitHub Actions, BitBucket Pipelines,
+    and SourceHut builds.sr.ht (#77).
+  * Fix: count tag changes when file has no prior tags.
+  * Fix: opustags read — drop unsupported -l flag (v1.10.1 compatibility).
+  * Fix: rename Opus.pm → OPUS.pm to match package name convention.
+
+ -- Rev. Duncan Ross Palmer <2e0eol@gmail.com>  Sat, 31 May 2026 15:34:00 +0100
+
 twitch-tag-media (0.10.0) stable; urgency=low
 
   * Add MKV support via mkvpropedit: read/write tags to Matroska files
