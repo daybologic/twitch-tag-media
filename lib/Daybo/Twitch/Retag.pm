@@ -108,6 +108,18 @@ sub __acceptableFileName {
 	return ($filename !~ /\.temp\.[^.]+$/i);
 }
 
+=item C<__chown($uid, $gid, $file)>
+
+Thin wrapper around C<chown> so ownership-restoration failures can be
+tested without depending on platform permissions.
+
+=cut
+
+sub __chown {
+	my ($self, $uid, $gid, $file) = @_;
+	return chown($uid, $gid, $file);
+}
+
 =item C<__collect($dirname)>
 
 Recursively walks C<$dirname>, returning an array ref of tuples
@@ -778,7 +790,8 @@ treated as a maximum file age in seconds; larger values are treated as an
 absolute Unix timestamp cutoff.  Files that are too recent are skipped
 with a log message regardless of C<--force>.  Otherwise reads existing tags, skips if all fields are already
 up to date (unless C<--force>), otherwise deletes and rewrites tags via
-the appropriate backend and restores the original GID.
+the appropriate backend and attempts to restore the original GID.  A
+failed GID restore is logged as a warning but does not fail the retag.
 Returns a two-element list C<($modified, $changeCount)>.
 
 =cut
@@ -857,16 +870,14 @@ sub __tagPerProcess {
 	$backendForExt->deleteTags($file);
 	$backendForExt->writeTags($file, $artist, $album, $track, $year, $comment);
 
-	unless (chown(-1, $gid, $file) == 1) {
-		$self->logger->emit($ERROR, $self->json ? {
-			process => { type => 'error', pid => $PID, pct => $pct },
-			error   => 'chown_failed',
+	unless ($self->__chown(-1, $gid, $file) == 1) {
+		$self->logger->emit($WARN, $self->json ? {
+			process => { type => 'warning', pid => $PID, pct => $pct },
+			warning => 'chown_failed',
 			gid     => $gid + 0,
 			file    => $file,
 			reason  => "$ERRNO",
 		} : "Cannot restore GID $gid on '$file': $ERRNO");
-		local $SIG{__DIE__} = 'DEFAULT'; ## no critic (Variables::RequireLocalizedPunctuationVars)
-		die("Cannot restore GID $gid on '$file': $ERRNO");
 	}
 
 	return (1, $changeCount);

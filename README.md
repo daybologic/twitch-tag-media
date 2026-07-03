@@ -31,6 +31,9 @@ Files are processed concurrently — one child process per file, up to the limit
 `--jobs` — so large collections tag quickly.  Synology NAS index directories (`@eaDir`) are
 skipped automatically when recursing.
 
+After writing tags, twitch-tag-media attempts to restore the file's original group ID.  If
+that group restore fails, the file remains tagged and the failure is logged as a warning.
+
 Any feedback on this is welcome.  The author is happy to make reasonable adjustments.
 
 ## Usage
@@ -124,6 +127,21 @@ Contains a `changes` array listing every field that differs.  If no fields diffe
 `pct` is the progress percentage (0–100) across the whole run; `pid` identifies which child
 process emitted the event, which is useful when `--jobs` is greater than 1 and events from
 multiple workers are interleaved on stdout.
+
+### Event: `warning`
+
+Emitted for non-fatal problems.  For example, if the tags were written but the original file
+group ID could not be restored:
+
+```json
+{
+  "process": { "type": "warning", "pct": 42, "pid": 12345 },
+  "warning": "chown_failed",
+  "gid": 1000,
+  "file": "/media/streams/artist (live) 2024-06-01 20_30-123456789.mp3",
+  "reason": "Operation not permitted"
+}
+```
 
 ### Event: `stats`
 
