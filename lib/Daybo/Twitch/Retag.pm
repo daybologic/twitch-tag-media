@@ -696,6 +696,8 @@ sub run {
 			$self->logger->emit($DEBUG, sprintf("%sReading '%s'%s", $self->__marker($pct), $relPath, $timing));
 		}
 
+		last if ($__interrupted);
+
 		$self->__tag(
 			$relPath,
 			$pct,
@@ -728,7 +730,7 @@ sub run {
 	$self->logger->emit($INFO, $self->__marker(100) . 'Finished');
 	$self->__printStats();
 
-	return EXIT_SUCCESS;
+	return $__interrupted ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
 =item C<__stamp()>
@@ -763,6 +765,7 @@ sub __tag {
 		local $PROGRAM_NAME = sprintf('%s: reached %d concurrent jobs, waitpid', $self->__originalProgramName, $self->jobs);
 		my $done = waitpid(-1, 0);
 		$self->__reapChild($done, $pct) if ($done > 0);
+		return if ($__interrupted);
 	}
 
 	pipe(my $rfh, my $wfh) or die("Cannot create pipe: $ERRNO");

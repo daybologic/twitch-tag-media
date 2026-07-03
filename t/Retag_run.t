@@ -98,6 +98,47 @@ sub testInterruptDuringCollectionExitsBeforeTagging {
 	return EXIT_SUCCESS;
 }
 
+sub testInterruptDuringDispatchExitsBeforeNextTag {
+	my ($self) = @_;
+	plan tests => 4;
+
+	my $dir = tempdir(CLEANUP => 1);
+	my $filename = sprintf(
+	    '%s (live) 2021-10-18 11_05-%d.mp3',
+	    $self->uniqueStr(),
+	    $self->unique(),
+	);
+	my $path = "$dir/$filename";
+	my $fh = IO::File->new($path, '>')
+	    or die("Cannot create '$path': $ERRNO");
+	print {$fh} $self->uniqueStr();
+	$fh->close()
+	    or die("Cannot close '$path': $ERRNO");
+
+	my $readingLogs = 0;
+	$self->mock('Daybo::Twitch::TagWrap', 'isExtSupported', sub { return 1 });
+	$self->mock('Daybo::Twitch::Logger', 'emit', sub {
+		my (undef, undef, $message) = @_;
+		return if (ref($message));
+		if ($message =~ m/Reading '\Q$path\E'/) {
+			$readingLogs++;
+			kill('TERM', $PID);
+		}
+		return;
+	});
+	$self->mock('Daybo::Twitch::Retag', '__tag');
+
+	my $result = $self->sut->run($dir);
+	my @logMessages = map { $_->[1] } @{ $self->mockCalls('Daybo::Twitch::Logger', 'emit') };
+
+	is($result, EXIT_FAILURE, 'returns failure after interrupt');
+	is($readingLogs, 1, 'interrupts during dispatch');
+	is(scalar(@{ $self->mockCalls('Daybo::Twitch::Retag', '__tag') }), 0, 'does not tag after signal');
+	ok(grep({ $_ =~ m/Caught SIGTERM; exiting/ } @logMessages), 'logs immediate exit');
+
+	return EXIT_SUCCESS;
+}
+
 package main; ## no critic (Modules::ProhibitMultiplePackages)
 use strict;
 use warnings;
