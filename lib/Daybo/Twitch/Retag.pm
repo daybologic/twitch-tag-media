@@ -248,7 +248,7 @@ sub __handleSignal {
 		$self->logger->emit($WARN, $self->json ? {
 			process  => { type => 'signal' },
 			signal   => $sig,
-			action   => $count ? 'draining' : 'exiting',
+			action   => ($count > 0) ? 'draining' : 'exiting',
 			children => $count,
 		} : $count ? sprintf("Caught SIG%s; %d child%s will finish current retag before stopping...",
 		    $sig, $count, $count == 1 ? '' : 'ren') : sprintf('Caught SIG%s; exiting...', $sig));
