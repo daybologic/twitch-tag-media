@@ -129,6 +129,8 @@ sub __collect {
 	}
 
 	while (defined(my $filename = $dir->read())) {
+		last if ($__interrupted);
+
 		next if ($filename eq '.' || $filename eq '..');
 
 		my $relPath = $dirname . '/' . $filename;
@@ -137,6 +139,7 @@ sub __collect {
 			if ($self->recursive && __acceptableDirName($filename)) {
 				my $sub = $self->__collect($relPath);
 				push(@files, @{$sub}) if (ref($sub));
+				last if ($__interrupted);
 			}
 		} elsif (my $fh = IO::File->new($relPath, '<')) {
 			my $ext = __getExt($filename);
@@ -245,10 +248,10 @@ sub __handleSignal {
 		$self->logger->emit($WARN, $self->json ? {
 			process  => { type => 'signal' },
 			signal   => $sig,
-			action   => 'draining',
+			action   => ($count > 0) ? 'draining' : 'exiting',
 			children => $count,
-		} : sprintf("Caught SIG%s; %d child%s will finish current retag before stopping...",
-		    $sig, $count, $count == 1 ? '' : 'ren'));
+		} : ($count > 0) ? sprintf("Caught SIG%s; %d child%s will finish current retag before stopping...",
+		    $sig, $count, $count == 1 ? '' : 'ren') : sprintf('Caught SIG%s; exiting...', $sig));
 	} else {
 		$self->logger->emit($WARN, $self->json ? {
 			process  => { type => 'signal' },
@@ -261,6 +264,12 @@ sub __handleSignal {
 	}
 	return;
 }
+
+=item C<__initStats()>
+
+Resets the per-run counters and captures the start time.
+
+=cut
 
 sub __initStats {
 	my ($self) = @_;
@@ -614,6 +623,8 @@ sub run {
 
 	my @files;
 	for my $path (@paths) {
+		last if ($__interrupted);
+
 		if (-f $path) {
 			my ($filename) = ($path =~ m{([^/]+)$});
 			my $ext = __getExt($filename);
@@ -633,6 +644,13 @@ sub run {
 		} else {
 			$self->logger->emit($WARN, "No such file or directory: '$path'");
 		}
+	}
+
+	if ($__interrupted) {
+		$self->_stats->{end_time} = time();
+		$self->logger->emit($INFO, $self->__marker(100) . 'Interrupted before tagging');
+		$self->__printStats();
+		return EXIT_FAILURE;
 	}
 
 	my $total = scalar(@files);
@@ -678,6 +696,8 @@ sub run {
 			$self->logger->emit($DEBUG, sprintf("%sReading '%s'%s", $self->__marker($pct), $relPath, $timing));
 		}
 
+		last if ($__interrupted);
+
 		$self->__tag(
 			$relPath,
 			$pct,
@@ -710,7 +730,7 @@ sub run {
 	$self->logger->emit($INFO, $self->__marker(100) . 'Finished');
 	$self->__printStats();
 
-	return EXIT_SUCCESS;
+	return $__interrupted ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
 =item C<__stamp()>
@@ -745,6 +765,7 @@ sub __tag {
 		local $PROGRAM_NAME = sprintf('%s: reached %d concurrent jobs, waitpid', $self->__originalProgramName, $self->jobs);
 		my $done = waitpid(-1, 0);
 		$self->__reapChild($done, $pct) if ($done > 0);
+		return if ($__interrupted);
 	}
 
 	pipe(my $rfh, my $wfh) or die("Cannot create pipe: $ERRNO");
