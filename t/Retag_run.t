@@ -43,6 +43,7 @@ use Daybo::Twitch::TagWrap;
 use English qw(-no_match_vars);
 use File::Temp qw(tempdir);
 use IO::File;
+use Log::Log4perl qw(:levels);
 use POSIX qw(EXIT_FAILURE EXIT_SUCCESS);
 use Test::More 0.96;
 
@@ -50,6 +51,107 @@ sub setUp {
 	my ($self) = @_;
 
 	$self->sut(Daybo::Twitch::Retag->new());
+
+	return EXIT_SUCCESS;
+}
+
+sub tearDown {
+	my ($self) = @_;
+
+	$self->clearMocks();
+
+	return EXIT_SUCCESS;
+}
+
+sub testExperimentalProgressCanBeDisabled {
+	my ($self) = @_;
+	plan tests => 2;
+
+	local $ENV{EXPERIMENTAL_PROGRESS} = '0';
+
+	my $dir = tempdir(CLEANUP => 1);
+	my $first = sprintf(
+	    '%s (live) 2021-10-18 11_05-%d.mp3',
+	    $self->uniqueStr(),
+	    $self->unique(),
+	);
+	my $second = sprintf(
+	    '%s (live) 2021-10-18 11_06-%d.mp3',
+	    $self->uniqueStr(),
+	    $self->unique(),
+	);
+	my $firstPath  = "$dir/$first";
+	my $secondPath = "$dir/$second";
+	foreach my $spec ([ $firstPath, 1 ], [ $secondPath, 3 ]) {
+		my ($path, $size) = @{$spec};
+		my $fh = IO::File->new($path, '>')
+		    or die("Cannot create '$path': $ERRNO");
+		my $data = 'x' x $size;
+		print {$fh} $data;
+		$fh->close()
+		    or die("Cannot close '$path': $ERRNO");
+	}
+
+	$self->mock('Daybo::Twitch::TagWrap', 'isExtSupported', sub { return 1 });
+	$self->mock('Daybo::Twitch::Logger', 'emit');
+	$self->mock('Daybo::Twitch::Retag', '__tag');
+
+	$self->sut->run($firstPath, $secondPath);
+	my @tagCalls = @{ $self->mockCalls('Daybo::Twitch::Retag', '__tag') };
+	my @warnings = grep({
+		$_->[0] == $WARN
+		    && $_->[1] eq 'EXPERIMENTAL_PROGRESS will be removed in a future release'
+	} @{ $self->mockCalls('Daybo::Twitch::Logger', 'emit') });
+
+	is_deeply([ map { $_->[1] } @tagCalls ], [ 50, 100 ], 'EXPERIMENTAL_PROGRESS=0 disables size-weighted progress');
+	is(scalar(@warnings), 1, 'warns that EXPERIMENTAL_PROGRESS will be removed');
+
+	return EXIT_SUCCESS;
+}
+
+sub testExperimentalProgressDefaultsOn {
+	my ($self) = @_;
+	plan tests => 2;
+
+	local $ENV{EXPERIMENTAL_PROGRESS};
+	delete($ENV{EXPERIMENTAL_PROGRESS});
+
+	my $dir = tempdir(CLEANUP => 1);
+	my $first = sprintf(
+	    '%s (live) 2021-10-18 11_05-%d.mp3',
+	    $self->uniqueStr(),
+	    $self->unique(),
+	);
+	my $second = sprintf(
+	    '%s (live) 2021-10-18 11_06-%d.mp3',
+	    $self->uniqueStr(),
+	    $self->unique(),
+	);
+	my $firstPath  = "$dir/$first";
+	my $secondPath = "$dir/$second";
+	foreach my $spec ([ $firstPath, 1 ], [ $secondPath, 3 ]) {
+		my ($path, $size) = @{$spec};
+		my $fh = IO::File->new($path, '>')
+		    or die("Cannot create '$path': $ERRNO");
+		my $data = 'x' x $size;
+		print {$fh} $data;
+		$fh->close()
+		    or die("Cannot close '$path': $ERRNO");
+	}
+
+	$self->mock('Daybo::Twitch::TagWrap', 'isExtSupported', sub { return 1 });
+	$self->mock('Daybo::Twitch::Logger', 'emit');
+	$self->mock('Daybo::Twitch::Retag', '__tag');
+
+	$self->sut->run($firstPath, $secondPath);
+	my @tagCalls = @{ $self->mockCalls('Daybo::Twitch::Retag', '__tag') };
+	my @warnings = grep({
+		$_->[0] == $WARN
+		    && $_->[1] eq 'EXPERIMENTAL_PROGRESS will be removed in a future release'
+	} @{ $self->mockCalls('Daybo::Twitch::Logger', 'emit') });
+
+	is_deeply([ map { $_->[1] } @tagCalls ], [ 25, 100 ], 'size-weighted progress is enabled by default');
+	is(scalar(@warnings), 0, 'does not warn when EXPERIMENTAL_PROGRESS is unset');
 
 	return EXIT_SUCCESS;
 }

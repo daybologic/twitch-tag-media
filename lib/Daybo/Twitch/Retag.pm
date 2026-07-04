@@ -671,7 +671,11 @@ sub run {
 		return EXIT_SUCCESS;
 	}
 
-	my $weighted = $ENV{EXPERIMENTAL_PROGRESS};
+	if (exists($ENV{EXPERIMENTAL_PROGRESS})) {
+		$self->logger->emit($WARN, 'EXPERIMENTAL_PROGRESS will be removed in a future release');
+	}
+
+	my $weighted = !exists($ENV{EXPERIMENTAL_PROGRESS}) || $ENV{EXPERIMENTAL_PROGRESS} ne '0';
 	my ($totalBytes, $doneBytes);
 	if ($weighted) {
 		$totalBytes += $_->[2] for @files;
