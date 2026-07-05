@@ -22,3 +22,8 @@ repos:
         entry: maint/run-podchecker.sh
         language: system
         pass_filenames: false
+      - id: parse-changelog
+        name: Parse Debian ChangeLog
+        entry: dpkg-parsechangelog -l debian/changelog
+        language: system
+        pass_filenames: false
