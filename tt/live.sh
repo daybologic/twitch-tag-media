@@ -94,6 +94,35 @@ checkMkvFile() {
 	check comment "$COMMENT"     "$comment"
 }
 
+checkMp4File() {
+	local file="$1" exp_artist="$2" exp_album="$3" exp_track="$4" exp_year="$5"
+	local artist='' album='' track='' year='' comment=''
+
+	echo "--- $file ---"
+	eval "$(
+	ffprobe -v quiet -print_format ini -show_format "${rootDir}/${file}" |
+	awk -F'=' '
+	/^\[format\.tags\]/ { in_tags=1; next }
+	/^\[/               { in_tags=0 }
+	in_tags {
+		key=tolower($1)
+		val=substr($0, index($0,"=")+1)
+		if (key=="artist")  { print "artist=\"" val "\"" }
+		if (key=="album")   { print "album=\"" val "\"" }
+		if (key=="title")   { gsub(/\\:/, ":", val); print "track=\"" val "\"" }
+		if (key=="date")    { print "year=\"" val "\"" }
+		if (key=="comment") { print "comment=\"" val "\"" }
+	}
+	'
+	)"
+
+	check artist  "$exp_artist"  "$artist"
+	check album   "$exp_album"   "$album"
+	check track   "$exp_track"   "$track"
+	check year    "$exp_year"    "$year"
+	check comment "$COMMENT"     "$comment"
+}
+
 checkFile "JohnnyEOfficial (live) 2022-03-17 20_31-45879430669-desilence.mp3" \
 	"Johnny E" \
 	"Johnny E on Twitch" \
@@ -153,5 +182,11 @@ checkMkvFile "AlessandraRoncone_music-20210613-184300.mkv" \
 	"Alessandra Roncone on Twitch" \
 	"Alessandra Roncone 2021-06-13 18:43:00" \
 	"2021"
+
+checkMp4File "tkkttony_live_2026-07-03.mp4" \
+	"tkkttony" \
+	"tkkttony on Twitch" \
+	"tkkttony 2026-07-03 00:00:00" \
+	"2026"
 
 exit 0

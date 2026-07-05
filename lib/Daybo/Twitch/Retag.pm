@@ -435,6 +435,10 @@ C<YYYY-MM-DD-HH-MM-SS-ArtistHandle.ext>
 
 C<ArtistHandle-YYYY-MM-DD.ext>
 
+=item *
+
+C<ArtistHandle_type_YYYY-MM-DD.ext>
+
 =back
 
 Returns C<undef> if none of the patterns match.
@@ -472,6 +476,14 @@ sub __parseFileName {
 
 		return $__filenameParserContext{$filename} = [ $artist, $album, $track, $year ];
 	} elsif ($filename =~ m/^(\w+)-(\d{4})-(\d{2})-(\d{2})\.\w+$/) {
+		my ($artistRaw, $year, $mon, $day) = ($1, $2, $3, $4);
+		my $date = "$year-$mon-$day";
+		my $artist = Daybo::Twitch::Transforms::normalizeArtist($artistRaw);
+		my $album = "${artist} on Twitch";
+		my $track = "${artist} ${date} 00:00:00";
+
+		return $__filenameParserContext{$filename} = [ $artist, $album, $track, $year ];
+	} elsif ($filename =~ m/^(.+)_\w+_(\d{4})-(\d{2})-(\d{2})\.\w+$/) {
 		my ($artistRaw, $year, $mon, $day) = ($1, $2, $3, $4);
 		my $date = "$year-$mon-$day";
 		my $artist = Daybo::Twitch::Transforms::normalizeArtist($artistRaw);

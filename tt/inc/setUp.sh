@@ -73,6 +73,13 @@ function RIFF2MKV {
 	return 0
 }
 
+mp4Source=''
+function RIFF2MP4 {
+	mp4Source="$tmpDir/source.mp4"
+	ffmpeg -y -i "$tmpDir/source.wav" -c:a aac "$mp4Source" 2>/dev/null
+	return 0
+}
+
 function copyFiles {
 	filesNames=(
 		"JohnnyEOfficial (live) 2022-03-17 20_31-45879430669-desilence"
@@ -101,8 +108,20 @@ function copyMkvFiles {
 	done
 }
 
+function copyMp4Files {
+	local mp4FileNames=(
+		"tkkttony_live_2026-07-03"
+	)
+
+	for fileName in "${mp4FileNames[@]}"; do
+		cp "$mp4Source" "$rootDir/$fileName.mp4"
+	done
+}
+
 newRIFF
 RIFF2MP3
 RIFF2MKV
+RIFF2MP4
 copyFiles
 copyMkvFiles
+copyMp4Files

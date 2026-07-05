@@ -81,6 +81,21 @@ sub testSuccessDateSuffixed {
 	return EXIT_SUCCESS;
 }
 
+sub testSuccessUnderscoreTypeDateSuffixed {
+	my ($self) = @_;
+	plan tests => 4;
+
+	# Format: ArtistHandle_type_YYYY-MM-DD.ext
+	my $result = Daybo::Twitch::Retag::__parseFileName('tkkttony_live_2026-07-03.mp4');
+
+	is($result->[0], 'tkkttony',                              'artist');
+	is($result->[1], 'tkkttony on Twitch',                   'album');
+	is($result->[2], 'tkkttony 2026-07-03 00:00:00',         'track');
+	is($result->[3], '2026',                                 'year');
+
+	return EXIT_SUCCESS;
+}
+
 sub testSuccessStreamlinkRecorder {
 	my ($self) = @_;
 	plan tests => 4;
