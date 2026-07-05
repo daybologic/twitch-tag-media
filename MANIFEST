@@ -75,6 +75,7 @@ t/TagWrap_getBackendForExt.t
 t/TagWrap_isExtSupported.t
 t/Transforms_fixConjunctions.t
 t/Transforms_fixWorldSuffix.t
+t/version.t
 tt/inc/setUp.sh
 tt/live.sh
 tt/noop.sh

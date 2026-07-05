@@ -1,3 +1,19 @@
+twitch-tag-media (1.0.1) stable; urgency=low
+
+  * Fix interrupted runs so SIGINT/SIGTERM during file collection or
+    dispatch stops promptly and exits with failure status.
+  * Treat failed group-ID restoration after tagging as a warning instead of
+    failing the retag; emit structured JSON warning events for that path.
+  * Add regression tests for interrupted runs and non-fatal GID restore
+    failures.
+  * Fix signal logging to treat a zero child-process count as "exiting",
+    not "draining".
+  * Update CI pipeline configuration, including actions/checkout v7.
+  * Refresh README wording for supported media formats, optional
+    dependencies, and warning-event documentation.
+
+ -- Rev. Duncan Ross Palmer <2e0eol@gmail.com>  Sun, 05 Jul 2026 10:07:57 +0100
+
 twitch-tag-media (1.0.0) stable; urgency=low
 
   * Extract artist-name transforms into Daybo::Twitch::Transforms; make
