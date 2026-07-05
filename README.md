@@ -1,12 +1,23 @@
 # twitch-tag-media
 
 When you record or archive Twitch streams using [yt-dlp](https://github.com/yt-dlp/yt-dlp),
-you end up with MP3 files whose names encode everything worth knowing — the streamer, the date,
-the time, the stream ID — but whose ID3 tags are completely blank.  Blank tags mean your music
-player, media server, or NAS cannot sort, browse, or display the recordings correctly.
+you end up with MP4 files whose names encode everything worth knowing — the streamer, the date,
+the time, the stream ID — but whose tags are completely blank.  Blank tags mean your music
+player, media server, or NAS cannot sort, browse, or display the recordings optimally.
 
 **twitch-tag-media fixes that.**  It reads the structured filenames that yt-dlp produces and
-writes proper ID3v1/v2 tags directly into the MP3 files:
+writes proper tags directly into the MP4 files.  It also supports other media formats, if you
+have converted the files.  The following files are completely supported:
+
+## MP3
+
+## MP4
+
+## Opus (Vorbis container)
+
+## MKV
+
+The following data is read from the filename and written to the appropriate tags:
 
 | Tag | Value |
 |-----|-------|
@@ -31,6 +42,9 @@ Files are processed concurrently — one child process per file, up to the limit
 `--jobs` — so large collections tag quickly.  Synology NAS index directories (`@eaDir`) are
 skipped automatically when recursing.
 
+After writing tags, twitch-tag-media attempts to restore the file's original group ID.  If
+that group restore fails, the file remains tagged and the failure is logged as a warning.
+
 Any feedback on this is welcome.  The author is happy to make reasonable adjustments.
 
 ## Usage
@@ -40,7 +54,7 @@ twitch-tag-media [--atime <S>] [--ctime <S>] [--force] [--help] [--jobs <N>] [--
 twitch-tag-media [-f] [-h] [-j <N>] [-J] [-L <LEVEL>] [-n] [-R] [-r] [-V] PATH [PATH...]
 ```
 
-Add MP3/MP4 tags to media files downloaded from Twitch using yt-dlp.  Each
+Add tags to media files downloaded from Twitch using yt-dlp.  Each
 `PATH` may be a file or a directory; directories are walked one level deep
 unless `--recursive` is also given.
 
@@ -125,6 +139,21 @@ Contains a `changes` array listing every field that differs.  If no fields diffe
 process emitted the event, which is useful when `--jobs` is greater than 1 and events from
 multiple workers are interleaved on stdout.
 
+### Event: `warning`
+
+Emitted for non-fatal problems.  For example, if the tags were written but the original file
+group ID could not be restored:
+
+```json
+{
+  "process": { "type": "warning", "pct": 42, "pid": 12345 },
+  "warning": "chown_failed",
+  "gid": 1000,
+  "file": "/media/streams/artist (live) 2024-06-01 20_30-123456789.mp3",
+  "reason": "Operation not permitted"
+}
+```
+
 ### Event: `stats`
 
 Emitted once at the end of a run (requires `--stats`).  Summarises the entire run.
@@ -162,10 +191,11 @@ percentages.  Instead of advancing by an equal step per file, each file contribu
 proportional to its size on disk, so large files move the percentage more than small ones.
 Feedback welcome.
 
-## Dependencies
+## Optional Dependencies
 
 - [`id3v2`](https://id3v2.sourceforge.net/) — command-line ID3 tagger
 - [`opustags`](https://github.com/fmang/opustags) — command-line Opus tagger
+- [`ffprobe` and `ffmpeg`](https://www.ffmpeg.org/) — FFmpeg is the leading multimedia framework
 
 ## Contributing
 

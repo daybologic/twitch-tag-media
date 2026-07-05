@@ -67,6 +67,8 @@ t/OPUS_readTagLines.t
 t/OPUS_readTags.t
 t/OPUS_writeTags.t
 t/Retag_parseFileName.t
+t/Retag_tagPerProcess.t
+t/Retag_run.t
 t/Retag_stamp.t
 t/Retag_usage.t
 t/TagWrap_getBackendForExt.t

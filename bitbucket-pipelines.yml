@@ -36,6 +36,7 @@ pipelines:
         script:
           - git submodule update --init --recursive
           - apt-get update
-          - apt-get install -y debhelper-compat libsys-cpu-perl id3v2 opustags lame libipc-run3-perl liblog-log4perl-perl libmoose-perl libmoosex-classattribute-perl libmoosex-singleton-perl libreadonly-perl libtest-deep-perl libtest-exception-perl libtest-mockmodule-perl libtest-output-perl libuniversal-require-perl sox
+          - apt-get install -y debhelper-compat libsys-cpu-perl id3v2 opustags lame libipc-run3-perl liblog-log4perl-perl libmoose-perl libmoosex-classattribute-perl libmoosex-singleton-perl libreadonly-perl libtest-deep-perl libtest-exception-perl libtest-mockmodule-perl libtest-output-perl libuniversal-require-perl sox ffmpeg mkvtoolnix
+
           - perl Makefile.PL
           - make && make test
