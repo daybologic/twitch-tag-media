@@ -182,14 +182,16 @@ values across all modified files.  Under `--noop`, `modified_files` is always 0 
 
 ## Experimental features
 
+Size-weighted progress percentages are enabled by default.  Instead of advancing by an
+equal step per file, each file contributes weight proportional to its size on disk, so
+large files move the percentage more than small ones.
+
 ```sh
-EXPERIMENTAL_PROGRESS=1 twitch-tag-media -d <DIR> ...
+EXPERIMENTAL_PROGRESS=0 twitch-tag-media -d <DIR> ...
 ```
 
-Setting the `EXPERIMENTAL_PROGRESS` environment variable enables size-weighted progress
-percentages.  Instead of advancing by an equal step per file, each file contributes weight
-proportional to its size on disk, so large files move the percentage more than small ones.
-Feedback welcome.
+Setting `EXPERIMENTAL_PROGRESS=0` disables size-weighted progress for now, but
+`EXPERIMENTAL_PROGRESS` will be removed in a future release.  Feedback welcome.
 
 ## Optional Dependencies
 
