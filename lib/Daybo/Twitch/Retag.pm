@@ -479,6 +479,14 @@ sub __parseFileName {
 		my $track = "${artist} ${date} 00:00:00";
 
 		return $__filenameParserContext{$filename} = [ $artist, $album, $track, $year ];
+	} elsif ($filename =~ m/^(\w+)_(\w+)_(\d{4})-(\d{2})-(\d{2})(?:-\w+)?\.\w+$/) {
+		my ($artistRaw, $year, $mon, $day) = ($1, $3, $4, $5);
+		my $date = "$year-$mon-$day";
+		my $artist = Daybo::Twitch::Transforms::normalizeArtist($artistRaw);
+		my $album = "${artist} on Twitch";
+		my $track = "${artist} ${date} 00:00:00";
+
+		return $__filenameParserContext{$filename} = [ $artist, $album, $track, $year ];
 	} elsif ($filename =~ m/^(\w+)-(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})\.(mkv)$/) {
 		my ($artistRaw, $year, $mon, $day, $hh, $mm, $ss) = ($1, $2, $3, $4, $5, $6, $7);
 		my $date = "$year-$mon-$day";
