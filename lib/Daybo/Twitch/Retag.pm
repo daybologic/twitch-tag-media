@@ -937,6 +937,11 @@ sub __tagPerProcess {
 	}
 
 	$year = $existing->{year} if defined($existing->{year}) && length($existing->{year});
+	# POSIX strptime convention: 00-68 means 2000-2068; 69-99 means 1969-1999.
+	# https://pubs.opengroup.org/onlinepubs/007904875/functions/strptime.html
+	if (defined($year) && $year =~ /^\d{2}$/) {
+		$year = ($year < 69 ? 2000 : 1900) + $year;
+	}
 
 	$artist //= '';
 	$album //= '';

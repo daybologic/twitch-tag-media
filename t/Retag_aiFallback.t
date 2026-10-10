@@ -210,6 +210,50 @@ sub testLatin1MetadataIsConvertedToUnicode {
 	return EXIT_SUCCESS;
 }
 
+sub testTwoDigitModelYearUses20thCentury {
+	my ($self) = @_;
+	plan tests => 1;
+
+	local $ENV{OPENAI_API_KEY} = 'test-key';
+	my ($fh, $file) = tempfile(SUFFIX => '.mp4');
+	print {$fh} 'media';
+	$fh->close() or die("Cannot close '$file': $ERRNO");
+
+	my $backend = bless({}, 'Retag_aiFallback_FakeBackend');
+	$self->mock('Daybo::Twitch::TagWrap', 'getBackendForExt', sub { return $backend });
+	$self->mock('Daybo::Twitch::OpenAI', 'identify', sub {
+		return ({ title => 'AI title', year => '99', description => 'AI description' }, undef);
+	});
+	$self->mock('Daybo::Twitch::Retag', '__chown', sub { return 1 });
+	$self->sut->__tagPerProcess($file, 'mp4', 50, undef, undef, undef, undef);
+
+	is($Retag_aiFallback_FakeBackend::calls[1][6], '1999', 'two-digit model year uses the 20th century');
+
+	return EXIT_SUCCESS;
+}
+
+sub testTwoDigitModelYearUses21stCentury {
+	my ($self) = @_;
+	plan tests => 1;
+
+	local $ENV{OPENAI_API_KEY} = 'test-key';
+	my ($fh, $file) = tempfile(SUFFIX => '.mp4');
+	print {$fh} 'media';
+	$fh->close() or die("Cannot close '$file': $ERRNO");
+
+	my $backend = bless({}, 'Retag_aiFallback_FakeBackend');
+	$self->mock('Daybo::Twitch::TagWrap', 'getBackendForExt', sub { return $backend });
+	$self->mock('Daybo::Twitch::OpenAI', 'identify', sub {
+		return ({ title => 'AI title', year => '27', description => 'AI description' }, undef);
+	});
+	$self->mock('Daybo::Twitch::Retag', '__chown', sub { return 1 });
+	$self->sut->__tagPerProcess($file, 'mp4', 50, undef, undef, undef, undef);
+
+	is($Retag_aiFallback_FakeBackend::calls[1][6], '2027', 'future two-digit model year uses the 21st century');
+
+	return EXIT_SUCCESS;
+}
+
 package main; ## no critic (Modules::ProhibitMultiplePackages)
 use strict;
 use warnings;
