@@ -4,10 +4,12 @@
 
 package Daybo::Twitch::OpenAI;
 use English qw(-no_match_vars);
+use Encode qw(FB_CROAK decode);
 use HTTP::Tiny;
 use JSON::PP qw(decode_json encode_json);
 use Log::Log4perl qw(:levels);
 use Moose;
+use utf8 ();
 use Daybo::Twitch::BaseObject;
 extends 'Daybo::Twitch::BaseObject';
 
@@ -22,6 +24,17 @@ no usable result is available.
 
 sub identify {
 	my ($self, $filename, $existing, $model, $apiKey) = @_;
+	my $unicodeFilename = $filename;
+	$unicodeFilename = eval { decode('UTF-8', $filename, FB_CROAK) }
+		unless (utf8::is_utf8($unicodeFilename));
+	$unicodeFilename = $filename if ($EVAL_ERROR);
+	my %unicodeExisting = map {
+		my $value = $existing->{$_};
+		$value = eval { decode('UTF-8', $value, FB_CROAK) }
+			if (defined($value) && !utf8::is_utf8($value));
+		$value = $existing->{$_} if ($EVAL_ERROR);
+		($_ => $value);
+	} keys(%{$existing});
 
 	my $request = {
 		model => $model,
@@ -32,7 +45,7 @@ sub identify {
 			},
 			{
 				role => 'user',
-				content => encode_json({ filename => $filename, existing => $existing }),
+				content => encode_json({ filename => $unicodeFilename, existing => \%unicodeExisting }),
 			},
 		],
 		response_format => {
@@ -92,7 +105,17 @@ sub identify {
 	my $content = $data->{choices}[0]{message}{content};
 	return (undef, 'HTTP response did not contain model content') unless defined($content);
 
-	my $metadata = eval { decode_json($content) };
+	my $metadata = eval {
+		my $json = JSON::PP->new;
+		if (utf8::is_utf8($content)) {
+			$content =~ s/([^\x00-\x7f])/sprintf('\\u%04x', ord($1))/ge;
+		}
+		return $json->utf8(1)->decode($content);
+	};
+	if ($EVAL_ERROR) {
+		my $unicodeJson = JSON::PP->new->utf8(0);
+		$metadata = eval { $unicodeJson->decode($content) };
+	}
 	return (undef, "invalid model response JSON: $EVAL_ERROR") if ($EVAL_ERROR || ref($metadata) ne 'HASH');
 	return scalar(grep { defined($metadata->{$_}) && length($metadata->{$_}) } keys(%{$metadata}))
 		? $metadata

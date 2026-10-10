@@ -17,6 +17,7 @@ use JSON::PP qw(decode_json encode_json);
 use Log::Log4perl qw(:levels);
 use POSIX qw(EXIT_SUCCESS);
 use Test::More 0.96;
+use utf8;
 
 sub setUp {
 	my ($self) = @_;
@@ -33,7 +34,7 @@ sub tearDown {
 
 sub testSuccess {
 	my ($self) = @_;
-	plan tests => 7;
+	plan tests => 8;
 
 	$self->mock('Daybo::Twitch::Logger', 'emit');
 	$self->mock('HTTP::Tiny', 'post', sub {
@@ -43,16 +44,16 @@ sub testSuccess {
 		my $request = decode_json($options->{content});
 		is($request->{model}, 'gpt-test', 'sends selected model');
 		is($request->{response_format}{json_schema}{name}, 'media_metadata', 'requests metadata schema');
+		my $context = decode_json($request->{messages}[1]{content});
+		is($context->{filename}, 'DJ Tiësto Mix.mp3', 'preserves Unicode in request context');
 		return {
 			success => 1,
-			content => encode_json({
-				choices => [ { message => { content => encode_json({ title => 'A title' }) } } ],
-			}),
+			content => '{"choices":[{"message":{"content":"{\\"title\\":\\"DJ Ti\\u00ebsto Mix\\"}"}}]}',
 		};
 	});
 
-	my $result = $self->sut->identify('file.mp4', { creator => 'Someone' }, 'gpt-test', 'key');
-	is($result->{title}, 'A title', 'decodes structured metadata');
+	my $result = $self->sut->identify('DJ Tiësto Mix.mp3', { creator => 'Someone' }, 'gpt-test', 'key');
+	is($result->{title}, 'DJ Tiësto Mix', 'decodes Unicode structured metadata');
 	my @trace = grep({ $_->[0] == $TRACE } @{ $self->mockCalls('Daybo::Twitch::Logger', 'emit') });
 	is($trace[0][1]{process}{type}, 'model_request', 'logs the actual request at TRACE');
 	is($trace[1][1]{process}{type}, 'model_response', 'logs the actual response at TRACE');
