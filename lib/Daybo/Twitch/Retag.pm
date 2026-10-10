@@ -936,6 +936,8 @@ sub __tagPerProcess {
 		$track = $filename unless defined($track) && length($track);
 	}
 
+	$year = $existing->{year} if defined($existing->{year}) && length($existing->{year});
+
 	$artist //= '';
 	$album //= '';
 	$track //= '';
