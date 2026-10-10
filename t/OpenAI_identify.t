@@ -54,8 +54,28 @@ sub testSuccess {
 	my $result = $self->sut->identify('file.mp4', { creator => 'Someone' }, 'gpt-test', 'key');
 	is($result->{title}, 'A title', 'decodes structured metadata');
 	my @trace = grep({ $_->[0] == $TRACE } @{ $self->mockCalls('Daybo::Twitch::Logger', 'emit') });
-	is($trace[0][1]{process}{type}, 'openai_request', 'logs the actual request at TRACE');
-	is($trace[1][1]{process}{type}, 'openai_response', 'logs the actual response at TRACE');
+	is($trace[0][1]{process}{type}, 'model_request', 'logs the actual request at TRACE');
+	is($trace[1][1]{process}{type}, 'model_response', 'logs the actual response at TRACE');
+
+	return EXIT_SUCCESS;
+}
+
+sub testHttpFailureReturnsDetail {
+	my ($self) = @_;
+	plan tests => 2;
+
+	$self->mock('HTTP::Tiny', 'post', sub {
+		return {
+			success => 0,
+			status => 401,
+			reason => 'Unauthorized',
+			content => '{"error":{"message":"invalid api key"}}',
+		};
+	});
+
+	my ($result, $error) = $self->sut->identify('file.mp4', {}, 'gpt-test', 'key');
+	is($result, undef, 'returns no metadata on HTTP failure');
+	is($error, 'HTTP 401 Unauthorized: {"error":{"message":"invalid api key"}}', 'returns HTTP failure detail');
 
 	return EXIT_SUCCESS;
 }

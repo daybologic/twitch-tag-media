@@ -891,7 +891,7 @@ sub __tagPerProcess {
 			file => $file,
 			reason => 'filename not recognised locally',
 		} : sprintf("Querying model '%s' for '%s' (filename not recognised locally)", $self->model, $file));
-		my $ai = $self->_openAI->identify(
+		my ($ai, $aiError) = $self->_openAI->identify(
 			$filename,
 			{
 				title => $existing->{track},
@@ -904,11 +904,13 @@ sub __tagPerProcess {
 			$ENV{OPENAI_API_KEY},
 		);
 		unless ($ai) {
+			$aiError //= 'no usable metadata returned';
 			$self->logger->emit($WARN, $self->json ? {
 				process => { type => 'warning', pid => $PID, pct => $pct },
-				warning => 'openai_failed',
+				warning => 'model_query_failed',
 				file => $file,
-			} : "OpenAI could not identify '$file'");
+				reason => $aiError,
+			} : "Model query failed for '$file': $aiError");
 			return (0, 0, $modelCalls);
 		}
 

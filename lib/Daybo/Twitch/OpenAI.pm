@@ -15,7 +15,8 @@ extends 'Daybo::Twitch::BaseObject';
 
 Requests generic metadata for C<$filename>, using C<$existing> as context.
 Returns a hash ref with optional C<title>, C<creator>, C<collection>, C<year>,
-and C<description> fields, or C<undef> when no usable result is available.
+and C<description> fields, or C<undef> and an explanatory error string when
+no usable result is available.
 
 =cut
 
@@ -56,7 +57,7 @@ sub identify {
 	};
 
 	$self->logger->emit($TRACE, {
-		process => { type => 'openai_request' },
+		process => { type => 'model_request' },
 		model => $model,
 		request => $request,
 	});
@@ -72,23 +73,30 @@ sub identify {
 		},
 	);
 	$self->logger->emit($TRACE, {
-		process => { type => 'openai_response' },
+		process => { type => 'model_response' },
 		model => $model,
 		status => defined($response->{status}) ? $response->{status} + 0 : undef,
 		response => $response->{content},
 	});
-	return unless $response->{success};
+	unless ($response->{success}) {
+		my $status = defined($response->{status}) ? $response->{status} : 'unknown';
+		my $reason = $response->{reason} // 'request failed';
+		my $detail = $response->{content} // '';
+		$detail =~ s/\s+/ /g;
+		$detail = substr($detail, 0, 1000);
+		return (undef, "HTTP $status $reason" . (length($detail) ? ": $detail" : ''));
+	}
 
 	my $data = eval { decode_json($response->{content}) };
-	return if ($EVAL_ERROR || !ref($data));
+	return (undef, "invalid HTTP response JSON: $EVAL_ERROR") if ($EVAL_ERROR || !ref($data));
 	my $content = $data->{choices}[0]{message}{content};
-	return unless defined($content);
+	return (undef, 'HTTP response did not contain model content') unless defined($content);
 
 	my $metadata = eval { decode_json($content) };
-	return if ($EVAL_ERROR || ref($metadata) ne 'HASH');
+	return (undef, "invalid model response JSON: $EVAL_ERROR") if ($EVAL_ERROR || ref($metadata) ne 'HASH');
 	return scalar(grep { defined($metadata->{$_}) && length($metadata->{$_}) } keys(%{$metadata}))
 		? $metadata
-		: undef;
+		: (undef, 'model response contained no usable metadata');
 }
 
 1;
