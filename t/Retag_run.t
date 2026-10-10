@@ -31,6 +31,7 @@
 
 package Retag_run_Tests;
 use strict;
+use utf8;
 use warnings;
 use Moose;
 
@@ -40,6 +41,7 @@ extends 'Test::Module::Runnable';
 
 use Daybo::Twitch::Retag;
 use Daybo::Twitch::TagWrap;
+use Encode qw(encode);
 use English qw(-no_match_vars);
 use File::Temp qw(tempdir);
 use IO::File;
@@ -237,6 +239,26 @@ sub testInterruptDuringDispatchExitsBeforeNextTag {
 	is($readingLogs, 1, 'interrupts during dispatch');
 	is(scalar(@{ $self->mockCalls('Daybo::Twitch::Retag', '__tag') }), 0, 'does not tag after signal');
 	ok(grep({ $_ =~ m/Caught SIGTERM; exiting/ } @logMessages), 'logs immediate exit');
+
+	return EXIT_SUCCESS;
+}
+
+sub testUtf8InputPathIsDecodedForLogging {
+	my ($self) = @_;
+	plan tests => 1;
+
+	my $root = tempdir(CLEANUP => 1);
+	my $unicodeDir = "$root/Café";
+	mkdir($unicodeDir) or die("Cannot create '$unicodeDir': $ERRNO");
+	my $rawDir = encode('UTF-8', $unicodeDir);
+	$self->mock('Daybo::Twitch::Logger', 'emit');
+
+	$self->sut->run($rawDir);
+
+	my @walkingLogs = grep({
+		$_->[0] == $DEBUG && $_->[1] eq "Walking '$unicodeDir'"
+	} @{ $self->mockCalls('Daybo::Twitch::Logger', 'emit') });
+	is(scalar(@walkingLogs), 1, 'decodes UTF-8 input paths before logging');
 
 	return EXIT_SUCCESS;
 }

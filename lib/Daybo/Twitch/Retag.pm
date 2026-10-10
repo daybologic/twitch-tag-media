@@ -154,6 +154,7 @@ Returns C<-1> (not a ref) if the directory cannot be opened.
 sub __collect {
 	my ($self, $dirname) = @_;
 	my @files;
+	$dirname = __decodeUtf8($dirname);
 
 	my $dir = IO::Dir->new($dirname);
 	unless ($dir) {
@@ -163,6 +164,7 @@ sub __collect {
 
 	while (defined(my $filename = $dir->read())) {
 		last if ($__interrupted);
+		$filename = __decodeUtf8($filename);
 
 		next if ($filename eq '.' || $filename eq '..');
 
@@ -203,6 +205,21 @@ sub __collect {
 	$dir->close();
 	@files = shuffle(@files) if ($self->random);
 	return \@files;
+}
+
+=item C<__decodeUtf8($value)>
+
+Decodes a filesystem value containing valid UTF-8 into a Perl character
+string.  Returns the original value when it is already decoded or is not
+valid UTF-8, preserving support for non-UTF-8 filenames.
+
+=cut
+
+sub __decodeUtf8 {
+	my ($value) = @_;
+	return $value if utf8::is_utf8($value);
+	my $decoded = eval { decode('UTF-8', $value, FB_CROAK) };
+	return $EVAL_ERROR ? $value : $decoded;
 }
 
 
@@ -671,6 +688,7 @@ sub run {
 	my @files;
 	for my $path (@paths) {
 		last if ($__interrupted);
+		$path = __decodeUtf8($path);
 
 		if (-f $path) {
 			my ($filename) = ($path =~ m{([^/]+)$});
