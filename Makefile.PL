@@ -47,6 +47,7 @@ WriteMakefile(
 	NAME         => 'Daybo::Twitch::Retag',
 
         PREREQ_PM => {
+                'HTTP::Tiny'          => 0,
                 'IPC::Run3'          => 0,
                 'Log::Log4perl'      => 0,
                 'Moose'              => 0,

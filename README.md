@@ -42,6 +42,23 @@ Files are processed concurrently — one child process per file, up to the limit
 `--jobs` — so large collections tag quickly.  Synology NAS index directories (`@eaDir`) are
 skipped automatically when recursing.
 
+## OpenAI fallback
+
+For supported audio and video formats whose filenames do not match a known local pattern,
+metadata can be suggested by OpenAI. This is deliberately opt-in: `OPENAI_API_KEY` is ignored
+unless `--model <MODEL>` is supplied. The model must begin with `gpt`, and a non-empty
+`OPENAI_API_KEY` is required for normal tagging runs.
+
+```sh
+OPENAI_API_KEY=... twitch-tag-media --model gpt-5-luna PATH
+```
+
+The request contains the filename and existing tags, not the media contents. The response can
+provide a title, creator, collection, year, and description; these are mapped to the format's
+title/artist, album/show, date, and comment fields. Failed or unusable requests leave the file
+unchanged. A model name that does not begin with `gpt` is rejected; `--help` and `--version`
+remain available without API configuration.
+
 After writing tags, twitch-tag-media attempts to restore the file's original group ID.  If
 that group restore fails, the file remains tagged and the failure is logged as a warning.
 
@@ -50,7 +67,7 @@ Any feedback on this is welcome.  The author is happy to make reasonable adjustm
 ## Usage
 
 ```
-twitch-tag-media [--atime <S>] [--ctime <S>] [--force] [--help] [--jobs <N>] [--json] [--log-level <LEVEL>] [--mtime <S>] [--noop] [--random] [--recursive] [--version] PATH [PATH...]
+twitch-tag-media [--atime <S>] [--ctime <S>] [--force] [--help] [--jobs <N>] [--json] [--log-level <LEVEL>] [--model <MODEL>] [--mtime <S>] [--noop] [--random] [--recursive] [--version] PATH [PATH...]
 twitch-tag-media [-f] [-h] [-j <N>] [-J] [-L <LEVEL>] [-n] [-R] [-r] [-V] PATH [PATH...]
 ```
 
@@ -71,6 +88,7 @@ unless `--recursive` is also given.
 | `--noop` | `-n` | Preview the tags which would be written without modifying any files |
 | `--recursive` | `-r` | Descend into subdirectories |
 | `--log-level <LEVEL>` | `-L <LEVEL>` | Set the Log4perl threshold for diagnostic output: `TRACE`, `DEBUG`, `INFO` (default), `WARN`, `ERROR`, or `FATAL` |
+| `--model <MODEL>` | | Authorize the OpenAI fallback for a lowercase `gpt...` model; requires `OPENAI_API_KEY` |
 | `--stats` | | Print stats |
 | `--version` | `-V` | Print the version number and exit |
 

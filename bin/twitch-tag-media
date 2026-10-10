@@ -33,7 +33,7 @@
 
 Usage:
 
-	twitch-tag-media [--atime <S>] [--ctime <S>] [--delay <S>] [--force] [--help] [--jobs <N>] [--json] [--log-level <LEVEL>] [--mtime <S>] [--noop] [--random] [--recursive] [--version] [--stats] PATH [PATH...]
+	twitch-tag-media [--atime <S>] [--ctime <S>] [--delay <S>] [--force] [--help] [--jobs <N>] [--json] [--log-level <LEVEL>] [--model <MODEL>] [--mtime <S>] [--noop] [--random] [--recursive] [--version] [--stats] PATH [PATH...]
 	twitch-tag-media [-d <S>] [-f] [-h] [-j <N>] [-J] [-L <LEVEL>] [-n] [-R] [-r] [-V] PATH [PATH...]
 
 Add tags to media files downloaded from Twitch using yt-dlp
@@ -67,6 +67,7 @@ sub main {
 	my $jobs;
 	my $json = 0;
 	my $logLevel = 'INFO';
+	my $model;
 	my $mtime = 0;
 	my $noop = 0;
 	my $random = 0;
@@ -83,6 +84,7 @@ sub main {
 		'jobs|j=i' => \$jobs,
 		'json|J' => \$json,
 		'log-level|L=s' => \$logLevel,
+		'model=s' => \$model,
 		'mtime=i' => \$mtime,
 		'noop|n' => \$noop,
 		'random|R' => \$random,
@@ -103,6 +105,17 @@ sub main {
 		return EXIT_SUCCESS;
 	}
 
+	if (!$help && defined($model)) {
+		unless ($model =~ /^gpt/) {
+			print STDERR "Error: --model must name a gpt model\n";
+			return EXIT_FAILURE;
+		}
+		unless (defined($ENV{OPENAI_API_KEY}) && length($ENV{OPENAI_API_KEY})) {
+			print STDERR "Error: OPENAI_API_KEY is required with --model '$model'\n";
+			return EXIT_FAILURE;
+		}
+	}
+
 	my %params = (
 		atime => $atime,
 		ctime => $ctime,
@@ -110,6 +123,7 @@ sub main {
 		force => $force,
 		json => $json,
 		logLevel => $logLevel,
+		model => $model,
 		mtime => $mtime,
 		noop => $noop,
 		random => $random,
