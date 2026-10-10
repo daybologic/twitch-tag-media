@@ -30,7 +30,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 package Daybo::Twitch::Retag;
-use Encode qw(FB_CROAK decode);
+use Encode qw(FB_CROAK decode encode);
 use English qw(-no_match_vars);
 use IO::Dir;
 use IO::File;
@@ -895,7 +895,7 @@ sub __tagPerProcess {
 		}
 	}
 
-	local $PROGRAM_NAME = sprintf('%s: reading "%s"', $self->__originalProgramName, $file);
+	local $PROGRAM_NAME = encode('UTF-8', sprintf('%s: reading "%s"', $self->__originalProgramName, $file));
 	my $backendForExt = $self->_tagWrap->getBackendForExt($ext);
 	my $existing = $backendForExt->readTags($file);
 	$existing //= {};
@@ -1006,7 +1006,7 @@ sub __tagPerProcess {
 		return (0, $changeCount);
 	}
 
-	local $PROGRAM_NAME = sprintf('%s: retagging "%s"', $self->__originalProgramName, $file);
+	local $PROGRAM_NAME = encode('UTF-8', sprintf('%s: retagging "%s"', $self->__originalProgramName, $file));
 	$backendForExt->deleteTags($file);
 	$backendForExt->writeTags($file, $artist, $album, $track, $year, $comment);
 
