@@ -30,6 +30,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 package Daybo::Twitch::Retag;
+use Encode qw(FB_CROAK decode);
 use English qw(-no_match_vars);
 use IO::Dir;
 use IO::File;
@@ -911,14 +912,21 @@ sub __tagPerProcess {
 				file => $file,
 				reason => $aiError,
 			} : "Model query failed for '$file': $aiError");
-			return (0, 0, $modelCalls);
+				return (0, 0, $modelCalls);
 		}
 
-		$artist = $ai->{creator} if defined($ai->{creator}) && length($ai->{creator});
-		$album = $ai->{collection} if defined($ai->{collection}) && length($ai->{collection});
-		$track = $ai->{title} if defined($ai->{title}) && length($ai->{title});
-		$year = $ai->{year} if defined($ai->{year}) && length($ai->{year});
-		$comment = $ai->{description} if defined($ai->{description}) && length($ai->{description});
+		foreach my $field (qw(creator collection title year description)) {
+			my $value = $ai->{$field};
+			next unless defined($value) && !utf8::is_utf8($value);
+			my $utf8Value = eval { decode('UTF-8', $value, FB_CROAK) };
+			$ai->{$field} = $EVAL_ERROR ? decode('ISO-8859-1', $value) : $utf8Value;
+		}
+
+		$artist = $ai->{creator} if defined($ai->{creator}) && length($ai->{creator}) && $ai->{creator} !~ /(?:\x{FFFD}|\x{EF}\x{BF}\x{BD})/;
+		$album = $ai->{collection} if defined($ai->{collection}) && length($ai->{collection}) && $ai->{collection} !~ /(?:\x{FFFD}|\x{EF}\x{BF}\x{BD})/;
+		$track = $ai->{title} if defined($ai->{title}) && length($ai->{title}) && $ai->{title} !~ /(?:\x{FFFD}|\x{EF}\x{BF}\x{BD})/;
+		$year = $ai->{year} if defined($ai->{year}) && length($ai->{year}) && $ai->{year} !~ /(?:\x{FFFD}|\x{EF}\x{BF}\x{BD})/;
+		$comment = $ai->{description} if defined($ai->{description}) && length($ai->{description}) && $ai->{description} !~ /(?:\x{FFFD}|\x{EF}\x{BF}\x{BD})/;
 		$artist //= $existing->{artist} // '';
 		$album //= $existing->{album} // '';
 		$track //= $existing->{track};

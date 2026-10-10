@@ -81,6 +81,23 @@ sub testHttpFailureReturnsDetail {
 	return EXIT_SUCCESS;
 }
 
+sub testLatin1ResponsePreservesAccents {
+	my ($self) = @_;
+	plan tests => 1;
+
+	$self->mock('HTTP::Tiny', 'post', sub {
+		return {
+			success => 1,
+			content => '{"choices":[{"message":{"content":"{\\"title\\":\\"DJ Ti' . pack('C', 0xeb) . 'sto Mix\\"}"}}]}',
+		};
+	});
+
+	my $result = $self->sut->identify('file.mp3', {}, 'gpt-test', 'key');
+	is($result->{title}, 'DJ Tiësto Mix', 'preserves Latin-1 accents in the HTTP response');
+
+	return EXIT_SUCCESS;
+}
+
 package main; ## no critic (Modules::ProhibitMultiplePackages)
 use strict;
 use warnings;

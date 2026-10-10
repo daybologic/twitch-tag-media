@@ -11,6 +11,7 @@ sub readTags {
 	my ($self) = @_;
 	return {
 		artist => 'Existing creator',
+		track => 'Existing track',
 		comment => 'Existing description',
 	};
 }
@@ -29,6 +30,7 @@ sub writeTags {
 
 package Retag_aiFallback_Tests; ## no critic (Modules::ProhibitMultiplePackages)
 use strict;
+use utf8;
 use warnings;
 use Moose;
 
@@ -138,6 +140,72 @@ sub testNoModelDoesNotAuthorizeFallback {
 	local $ENV{OPENAI_API_KEY} = 'test-key';
 	$self->sut(Daybo::Twitch::Retag->new());
 	ok(!$self->sut->__aiAuthorized(), 'API key alone does not authorize OpenAI');
+
+	return EXIT_SUCCESS;
+}
+
+sub testReplacementCharacterDoesNotOverwriteExistingMetadata {
+	my ($self) = @_;
+	plan tests => 1;
+
+	local $ENV{OPENAI_API_KEY} = 'test-key';
+	my ($fh, $file) = tempfile(SUFFIX => '.mp4');
+	print {$fh} 'media';
+	$fh->close() or die("Cannot close '$file': $ERRNO");
+
+	my $backend = bless({}, 'Retag_aiFallback_FakeBackend');
+	$self->mock('Daybo::Twitch::TagWrap', 'getBackendForExt', sub { return $backend });
+	$self->mock('Daybo::Twitch::OpenAI', 'identify', sub {
+		return ({ title => qq{AI Ti\x{FFFD}sto Remix}, description => 'AI description' }, undef);
+	});
+	$self->mock('Daybo::Twitch::Retag', '__chown', sub { return 1 });
+	$self->sut->__tagPerProcess($file, 'mp4', 50, undef, undef, undef, undef);
+
+	is($Retag_aiFallback_FakeBackend::calls[1][5], 'Existing track', 'replacement character does not overwrite existing track');
+
+	return EXIT_SUCCESS;
+}
+
+sub testReplacementBytesDoNotOverwriteExistingMetadata {
+	my ($self) = @_;
+	plan tests => 1;
+
+	local $ENV{OPENAI_API_KEY} = 'test-key';
+	my ($fh, $file) = tempfile(SUFFIX => '.mp4');
+	print {$fh} 'media';
+	$fh->close() or die("Cannot close '$file': $ERRNO");
+
+	my $backend = bless({}, 'Retag_aiFallback_FakeBackend');
+	$self->mock('Daybo::Twitch::TagWrap', 'getBackendForExt', sub { return $backend });
+	$self->mock('Daybo::Twitch::OpenAI', 'identify', sub {
+		return ({ title => 'AI Ti' . pack('C3', 0xef, 0xbf, 0xbd) . 'sto Remix', description => 'AI description' }, undef);
+	});
+	$self->mock('Daybo::Twitch::Retag', '__chown', sub { return 1 });
+	$self->sut->__tagPerProcess($file, 'mp4', 50, undef, undef, undef, undef);
+
+	is($Retag_aiFallback_FakeBackend::calls[1][5], 'Existing track', 'replacement bytes do not overwrite existing track');
+
+	return EXIT_SUCCESS;
+}
+
+sub testLatin1MetadataIsConvertedToUnicode {
+	my ($self) = @_;
+	plan tests => 1;
+
+	local $ENV{OPENAI_API_KEY} = 'test-key';
+	my ($fh, $file) = tempfile(SUFFIX => '.mp4');
+	print {$fh} 'media';
+	$fh->close() or die("Cannot close '$file': $ERRNO");
+
+	my $backend = bless({}, 'Retag_aiFallback_FakeBackend');
+	$self->mock('Daybo::Twitch::TagWrap', 'getBackendForExt', sub { return $backend });
+	$self->mock('Daybo::Twitch::OpenAI', 'identify', sub {
+		return ({ title => 'AI Ti' . pack('C', 0xeb) . 'sto Remix', description => 'AI description' }, undef);
+	});
+	$self->mock('Daybo::Twitch::Retag', '__chown', sub { return 1 });
+	$self->sut->__tagPerProcess($file, 'mp4', 50, undef, undef, undef, undef);
+
+	is($Retag_aiFallback_FakeBackend::calls[1][5], 'AI Tiësto Remix', 'Latin-1 metadata is converted to Unicode');
 
 	return EXIT_SUCCESS;
 }

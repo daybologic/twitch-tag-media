@@ -100,22 +100,22 @@ sub identify {
 		return (undef, "HTTP $status $reason" . (length($detail) ? ": $detail" : ''));
 	}
 
-	my $data = eval { decode_json($response->{content}) };
+	my $responseText = $response->{content};
+	unless (utf8::is_utf8($responseText)) {
+		my $utf8Response = eval { decode('UTF-8', $responseText, FB_CROAK) };
+		$responseText = $EVAL_ERROR ? decode('ISO-8859-1', $responseText) : $utf8Response;
+	}
+	my $data = eval { JSON::PP->new->utf8(0)->decode($responseText) };
 	return (undef, "invalid HTTP response JSON: $EVAL_ERROR") if ($EVAL_ERROR || !ref($data));
 	my $content = $data->{choices}[0]{message}{content};
 	return (undef, 'HTTP response did not contain model content') unless defined($content);
 
-	my $metadata = eval {
-		my $json = JSON::PP->new;
-		if (utf8::is_utf8($content)) {
-			$content =~ s/([^\x00-\x7f])/sprintf('\\u%04x', ord($1))/ge;
-		}
-		return $json->utf8(1)->decode($content);
-	};
-	if ($EVAL_ERROR) {
-		my $unicodeJson = JSON::PP->new->utf8(0);
-		$metadata = eval { $unicodeJson->decode($content) };
+	my $contentText = $content;
+	unless (utf8::is_utf8($contentText)) {
+		my $utf8Content = eval { decode('UTF-8', $contentText, FB_CROAK) };
+		$contentText = $EVAL_ERROR ? decode('ISO-8859-1', $contentText) : $utf8Content;
 	}
+	my $metadata = eval { JSON::PP->new->utf8(0)->decode($contentText) };
 	return (undef, "invalid model response JSON: $EVAL_ERROR") if ($EVAL_ERROR || ref($metadata) ne 'HASH');
 	return scalar(grep { defined($metadata->{$_}) && length($metadata->{$_}) } keys(%{$metadata}))
 		? $metadata

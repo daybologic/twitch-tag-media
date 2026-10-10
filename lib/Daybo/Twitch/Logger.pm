@@ -78,6 +78,7 @@ END_TEXT_CONF
 
 	my $app  = Daybo::Twitch::BaseObject->application();
 	my $conf = $app->json ? $jsonConf : $textConf;
+	binmode(STDOUT, ':encoding(UTF-8)');
 	Log::Log4perl->init_once(\$conf);
 
 	$__logger = get_logger('Daybo.Twitch.Retag');
