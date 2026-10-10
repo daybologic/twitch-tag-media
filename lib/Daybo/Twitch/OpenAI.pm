@@ -6,7 +6,10 @@ package Daybo::Twitch::OpenAI;
 use English qw(-no_match_vars);
 use HTTP::Tiny;
 use JSON::PP qw(decode_json encode_json);
+use Log::Log4perl qw(:levels);
 use Moose;
+use Daybo::Twitch::BaseObject;
+extends 'Daybo::Twitch::BaseObject';
 
 =item C<identify($filename, $existing, $model, $apiKey)>
 
@@ -52,6 +55,12 @@ sub identify {
 		},
 	};
 
+	$self->logger->emit($TRACE, {
+		process => { type => 'openai_request' },
+		model => $model,
+		request => $request,
+	});
+
 	my $response = HTTP::Tiny->new(timeout => 60)->post(
 		'https://api.openai.com/v1/chat/completions',
 		{
@@ -62,6 +71,12 @@ sub identify {
 			},
 		},
 	);
+	$self->logger->emit($TRACE, {
+		process => { type => 'openai_response' },
+		model => $model,
+		status => defined($response->{status}) ? $response->{status} + 0 : undef,
+		response => $response->{content},
+	});
 	return unless $response->{success};
 
 	my $data = eval { decode_json($response->{content}) };

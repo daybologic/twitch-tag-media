@@ -314,6 +314,7 @@ sub __initStats {
 		modified_bytes => 0,
 		skipped_bytes  => 0,
 		tags_altered      => 0,
+		model_calls       => 0,
 		unqualified_bytes => 0,
 		unqualified_files => 0,
 		seen_files        => 0,
@@ -556,6 +557,7 @@ sub __printStats {
 				elapsed_s           => $elapsed + 0,
 				avg_time_per_file_s => $s->{total_files} > 0 ? $elapsed / $s->{total_files} : 0,
 				avg_time_per_mib_s  => $total_mib > 0 ? $elapsed / $total_mib : 0,
+				(defined($self->model) ? (model => $self->model, model_calls => $s->{model_calls} + 0) : ()),
 			},
 		});
 		return;
@@ -571,6 +573,8 @@ sub __printStats {
 	$plain .= sprintf("  Modified bytes:   %s\n",   __fmtBytes($s->{modified_bytes}));
 	$plain .= sprintf("  Skipped bytes:    %s\n",   __fmtBytes($s->{skipped_bytes}));
 	$plain .= sprintf("  Tags altered:     %d\n",   $s->{tags_altered});
+	$plain .= sprintf("  Model calls (%s): %d\n", $self->model, $s->{model_calls})
+		if (defined($self->model));
 	$plain .= sprintf("  Unqualified files: %d\n",  $s->{unqualified_files});
 	$plain .= sprintf("  Unqualified bytes: %s\n",  __fmtBytes($s->{unqualified_bytes}));
 	$plain .= sprintf("  Total time:       %s\n", __fmtDuration($elapsed));
@@ -602,9 +606,10 @@ sub __reapChild {
 		close($entry->{rfh});
 		if (defined($line)) {
 			chomp($line);
-			my ($modified, $changeCount) = split(/ /, $line);
+			my ($modified, $changeCount, $modelCalls) = split(/ /, $line);
 			$modified //= 0;
 			$changeCount //= 0;
+			$modelCalls //= 0;
 			$self->_stats->{total_files}++;
 			$self->_stats->{total_bytes} += $entry->{size};
 			if ($modified) {
@@ -615,6 +620,7 @@ sub __reapChild {
 				$self->_stats->{skipped_bytes} += $entry->{size};
 			}
 			$self->_stats->{tags_altered} += $changeCount;
+			$self->_stats->{model_calls} += $modelCalls;
 			$self->logger->emit($TRACE, $self->json ? {
 				process => { type => 'reaped', pid => $done_pid, pct => $pct },
 				modified      => $modified + 0,
@@ -827,10 +833,11 @@ sub __tag {
 		local $SIG{INT}  = 'DEFAULT';
 		local $SIG{TERM} = 'DEFAULT';
 		close($rfh);
-		my ($modified, $changeCount) = $self->__tagPerProcess($file, $ext, $pct, $artist, $album, $track, $year);
+		my ($modified, $changeCount, $modelCalls) = $self->__tagPerProcess($file, $ext, $pct, $artist, $album, $track, $year);
 		$modified //= 0;
 		$changeCount //= 0;
-		print $wfh "$modified $changeCount\n";
+		$modelCalls //= 0;
+		print $wfh "$modified $changeCount $modelCalls\n";
 		close($wfh);
 		exit(EXIT_SUCCESS);
 	}
@@ -848,7 +855,7 @@ with a log message regardless of C<--force>.  Otherwise reads existing tags, ski
 up to date (unless C<--force>), otherwise deletes and rewrites tags via
 the appropriate backend and attempts to restore the original GID.  A
 failed GID restore is logged as a warning but does not fail the retag.
-Returns a two-element list C<($modified, $changeCount)>.
+Returns a three-element list C<($modified, $changeCount, $modelCalls)>.
 
 =cut
 
@@ -873,9 +880,17 @@ sub __tagPerProcess {
 	my $backendForExt = $self->_tagWrap->getBackendForExt($ext);
 	my $existing = $backendForExt->readTags($file);
 	$existing //= {};
+	my $modelCalls = 0;
 
 	if (!defined($artist) && $self->__aiAuthorized()) {
+		$modelCalls = 1;
 		my ($filename) = ($file =~ m{([^/]+)$});
+		$self->logger->emit($DEBUG, $self->json ? {
+			process => { type => 'model_query', pct => $pct, pid => $PID },
+			model => $self->model,
+			file => $file,
+			reason => 'filename not recognised locally',
+		} : sprintf("Querying model '%s' for '%s' (filename not recognised locally)", $self->model, $file));
 		my $ai = $self->_openAI->identify(
 			$filename,
 			{
@@ -894,7 +909,7 @@ sub __tagPerProcess {
 				warning => 'openai_failed',
 				file => $file,
 			} : "OpenAI could not identify '$file'");
-			return (0, 0);
+			return (0, 0, $modelCalls);
 		}
 
 		$artist = $ai->{creator} if defined($ai->{creator}) && length($ai->{creator});
@@ -970,7 +985,7 @@ sub __tagPerProcess {
 		} : "Cannot restore GID $gid on '$file': $ERRNO");
 	}
 
-	return (1, $changeCount);
+	return (1, $changeCount, $modelCalls // 0);
 }
 
 =item C<usage()>

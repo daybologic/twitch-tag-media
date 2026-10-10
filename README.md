@@ -198,6 +198,9 @@ Emitted once at the end of a run (requires `--stats`).  Summarises the entire ru
 values across all modified files.  Under `--noop`, `modified_files` is always 0 but
 `tags_altered` still reflects what would have changed.
 
+When `--model` is specified, the stats event also includes `model` and `model_calls`, counting
+the requests made to that model.  The human-readable summary displays the same count.
+
 ## Experimental features
 
 Size-weighted progress percentages are enabled by default.  Instead of advancing by an

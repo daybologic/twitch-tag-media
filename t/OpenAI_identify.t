@@ -11,13 +11,16 @@ use lib 'externals/libtest-module-runnable-perl/lib';
 extends 'Test::Module::Runnable';
 
 use Daybo::Twitch::OpenAI;
+use Daybo::Twitch::Retag;
 use English qw(-no_match_vars);
 use JSON::PP qw(decode_json encode_json);
+use Log::Log4perl qw(:levels);
 use POSIX qw(EXIT_SUCCESS);
 use Test::More 0.96;
 
 sub setUp {
 	my ($self) = @_;
+	Daybo::Twitch::Retag->new(logLevel => 'TRACE');
 	$self->sut(Daybo::Twitch::OpenAI->new());
 	return EXIT_SUCCESS;
 }
@@ -30,8 +33,9 @@ sub tearDown {
 
 sub testSuccess {
 	my ($self) = @_;
-	plan tests => 5;
+	plan tests => 7;
 
+	$self->mock('Daybo::Twitch::Logger', 'emit');
 	$self->mock('HTTP::Tiny', 'post', sub {
 		my (undef, $url, $options) = @_;
 		is($url, 'https://api.openai.com/v1/chat/completions', 'posts to Chat Completions');
@@ -49,6 +53,9 @@ sub testSuccess {
 
 	my $result = $self->sut->identify('file.mp4', { creator => 'Someone' }, 'gpt-test', 'key');
 	is($result->{title}, 'A title', 'decodes structured metadata');
+	my @trace = grep({ $_->[0] == $TRACE } @{ $self->mockCalls('Daybo::Twitch::Logger', 'emit') });
+	is($trace[0][1]{process}{type}, 'openai_request', 'logs the actual request at TRACE');
+	is($trace[1][1]{process}{type}, 'openai_response', 'logs the actual response at TRACE');
 
 	return EXIT_SUCCESS;
 }

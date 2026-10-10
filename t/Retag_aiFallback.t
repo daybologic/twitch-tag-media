@@ -39,6 +39,7 @@ extends 'Test::Module::Runnable';
 use Daybo::Twitch::Retag;
 use English qw(-no_match_vars);
 use File::Temp qw(tempfile);
+use Log::Log4perl qw(:levels);
 use POSIX qw(EXIT_SUCCESS);
 use Test::More 0.96;
 
@@ -59,7 +60,7 @@ sub tearDown {
 
 sub testFallbackMergesGenericMetadata {
 	my ($self) = @_;
-	plan tests => 6;
+	plan tests => 8;
 
 	local $ENV{OPENAI_API_KEY} = 'test-key';
 	my ($fh, $file) = tempfile(SUFFIX => '.mp4');
@@ -81,14 +82,51 @@ sub testFallbackMergesGenericMetadata {
 			description => 'AI description',
 		};
 	});
+	$self->mock('Daybo::Twitch::Logger', 'emit');
 	$self->mock('Daybo::Twitch::Retag', '__chown', sub { return 1 });
 
-	$self->sut->__tagPerProcess($file, 'mp4', 50, undef, undef, undef, undef);
+	my (undef, undef, $modelCalls) = $self->sut->__tagPerProcess($file, 'mp4', 50, undef, undef, undef, undef);
+	is($modelCalls, 1, 'counts the OpenAI request');
+	my @queryLogs = grep({
+		$_->[0] == $DEBUG
+		    && (!ref($_->[1]) && $_->[1] =~ /Querying model 'gpt-test'/)
+	} @{ $self->mockCalls('Daybo::Twitch::Logger', 'emit') });
+	is(scalar(@queryLogs), 1, 'logs the model query at DEBUG');
 	my $write = $Retag_aiFallback_FakeBackend::calls[1];
 	is_deeply([ @{$write}[2 .. 7] ], [
 		$file, 'Existing creator', 'AI collection', 'AI title', '2026', 'AI description',
 	], 'AI metadata is merged into canonical backend fields');
 	is($Retag_aiFallback_FakeBackend::calls[0][0], 'deleteTags', 'tags are rewritten');
+
+	return EXIT_SUCCESS;
+}
+
+sub testStatsIncludeModelCalls {
+	my ($self) = @_;
+	plan tests => 2;
+
+	$self->sut(Daybo::Twitch::Retag->new(model => 'gpt-test', json => 1, stats => 1));
+	$self->sut->_stats({
+		end_time => 1,
+		start_time => 0,
+		total_bytes => 0,
+		total_files => 0,
+		modified_files => 0,
+		skipped_files => 0,
+		modified_bytes => 0,
+		skipped_bytes => 0,
+		tags_altered => 0,
+		unqualified_bytes => 0,
+		unqualified_files => 0,
+		seen_files => 0,
+		seen_bytes => 0,
+		model_calls => 3,
+	});
+	$self->mock('Daybo::Twitch::Logger', 'emit');
+	$self->sut->__printStats();
+	my $stats = $self->mockCalls('Daybo::Twitch::Logger', 'emit')->[-1][1]{stats};
+	is($stats->{model}, 'gpt-test', 'stats identify the selected model');
+	is($stats->{model_calls}, 3, 'JSON stats include model call count');
 
 	return EXIT_SUCCESS;
 }
